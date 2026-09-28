@@ -1,0 +1,16 @@
+# Build artifacts & executables
+*.exe
+*.o
+obj/
+bin/
+
+# Temporary and log files
+*.log
+*.tmp
+*.bak
+
+# IDE & Editor configurations
+.vscode/
+.idea/
+*.swp
+*~

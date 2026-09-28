@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab Operations & Emergency Fault Triage Engine</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="title-group">
+        <h1>Lab Operations, Emergency Fault Triage & Calibration Engine</h1>
+        <p class="subtitle">VIT Pune — Semester 3 IT Dept (Group 8) | Custom DSA Backend (Zero STL Containers)</p>
+      </div>
+      <div class="actions">
+        <button id="btn-undo" class="btn btn-warning" title="O(1) LIFO Rollback">
+          ↺ Undo Last Action (<span id="undo-count">0</span>)
+        </button>
+        <button id="btn-dispatch" class="btn btn-danger" title="O(log N) Extract Root">
+          ⚡ Dispatch Highest Urgency
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Status & DSA Cards -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Hash Table Registry</div>
+        <div class="metric-value" id="val-asset-count">0</div>
+        <div class="metric-meta">O(1) Average Lookup (Separate Chaining)</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">Max-Heap Triage Queue</div>
+        <div class="metric-value" id="val-triage-count">0</div>
+        <div class="metric-meta">O(1) Root Urgency | O(log N) Insert</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Intake Buffer Status</div>
+        <div class="metric-value" id="val-intake-status">Ready</div>
+        <div class="metric-meta">O(1) Memory-Bounded FIFO Ring Buffer</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">LIFO Undo Stack</div>
+        <div class="metric-value" id="val-undo-depth">0</div>
+        <div class="metric-meta">O(1) Transaction Rollback History</div>
+      </div>
+    </section>
+
+    <!-- Main Workspace (Forms) -->
+    <div class="forms-grid">
+      <!-- Form 1: Add Asset -->
+      <section class="card">
+        <h2>1. Register Lab Equipment</h2>
+        <p class="section-desc">Indexed into <strong>Hash Table</strong> (O(1)) and <strong>AVL Tree</strong> (O(log N)).</p>
+        <form id="form-add-asset">
+          <div class="form-group">
+            <label for="asset-code">Asset Code *</label>
+            <input type="text" id="asset-code" placeholder="e.g. LAB-PC-017" required>
+          </div>
+          <div class="form-group">
+            <label for="asset-name">Equipment Name *</label>
+            <input type="text" id="asset-name" placeholder="e.g. Centrifuge CF-200" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group col">
+              <label for="asset-loc">Lab Location</label>
+              <input type="text" id="asset-loc" placeholder="Room 304, Bio Lab">
+            </div>
+            <div class="form-group col">
+              <label for="asset-calib">Next Calib Due (Days)</label>
+              <input type="number" id="asset-calib" value="30">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="asset-downtime">Historical Downtime (Hours)</label>
+            <input type="number" step="0.5" id="asset-downtime" value="0.0">
+          </div>
+          <button type="submit" class="btn btn-primary">Register Asset</button>
+        </form>
+      </section>
+
+      <!-- Form 2: Submit Fault Report -->
+      <section class="card">
+        <h2>2. Ingest Service Fault Report</h2>
+        <p class="section-desc">Pipes through: <strong>Circular Queue</strong> &rarr; <strong>Hash Lookup</strong> &rarr; <strong>DLL Append</strong> &rarr; <strong>Drift Calc</strong> &rarr; <strong>Max-Heap</strong>.</p>
+        <form id="form-submit-report">
+          <div class="form-row">
+            <div class="form-group col">
+              <label for="report-asset">Target Asset Code *</label>
+              <input type="text" id="report-asset" placeholder="e.g. LAB-PC-017" required>
+            </div>
+            <div class="form-group col">
+              <label for="report-severity">Severity (1 to 5) *</label>
+              <select id="report-severity" required>
+                <option value="1">1 - Minor Drift</option>
+                <option value="2">2 - Moderate Warning</option>
+                <option value="3">3 - Operational Impact</option>
+                <option value="4">4 - High Urgency</option>
+                <option value="5" selected>5 - Critical Emergency</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col">
+              <label for="report-overdue">Days Overdue</label>
+              <input type="number" id="report-overdue" value="5">
+            </div>
+            <div class="form-group col">
+              <label for="report-deviation">Measured Deviation (&Delta;Dev)</label>
+              <input type="number" step="0.01" id="report-deviation" value="14.8" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="report-desc">Issue Description</label>
+            <input type="text" id="report-desc" placeholder="Rotor vibration exceeding tolerance...">
+          </div>
+          <button type="submit" class="btn btn-danger">Enqueue & Triage Fault</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- Live Triage Queue Table -->
+    <section class="card full-width">
+      <div class="table-header">
+        <div>
+          <h2>3. Live Max-Heap Fault Triage Queue</h2>
+          <p class="section-desc">Prioritized dynamically by Risk Score: <code>Risk = 3*Severity + 2*DaysOverdue + 5*|DriftVelocity|</code></p>
+        </div>
+        <button id="btn-refresh" class="btn btn-secondary">⟳ Refresh</button>
+      </div>
+
+      <div class="table-container">
+        <table id="table-triage">
+          <thead>
+            <tr>
+              <th>Priority / Root</th>
+              <th>Task ID</th>
+              <th>Asset Code</th>
+              <th>Equipment Name</th>
+              <th>Severity</th>
+              <th>Days Overdue</th>
+              <th>Drift Velocity</th>
+              <th>Risk Score</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody id="triage-body">
+            <tr>
+              <td colspan="9" class="empty-state">No triage tasks in queue. Submit a fault report above.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Standalone Structure Demonstrations (70% Scope Showcase) -->
+    <div class="forms-grid">
+      <!-- Graph BFS/DFS Demo -->
+      <section class="card">
+        <h2>Standalone Graph Blast-Radius (BFS/DFS)</h2>
+        <p class="section-desc">Models equipment dependencies. BFS/DFS discovers all affected equipment.</p>
+        <div class="form-row">
+          <div class="form-group col">
+            <input type="text" id="graph-asset" value="LAB-UPS-01" placeholder="Source Asset Code">
+          </div>
+          <div class="form-group col-auto">
+            <button id="btn-blast-radius" class="btn btn-secondary">Run BFS Blast Analysis</button>
+          </div>
+        </div>
+        <div id="blast-results" class="demo-box">
+          Click button to run BFS traversal on dependency graph.
+        </div>
+      </section>
+
+      <!-- Merge Sort Demo -->
+      <section class="card">
+        <h2>Standalone Merge Sort Compliance Audit</h2>
+        <p class="section-desc">Sorts registered equipment in O(N log N) time without STL containers.</p>
+        <div class="form-row">
+          <div class="form-group col">
+            <select id="sort-criterion">
+              <option value="downtime">Sort by Downtime (Descending)</option>
+              <option value="faults">Sort by Total Fault Count (Descending)</option>
+              <option value="calib">Sort by Next Calibration Due (Ascending)</option>
+            </select>
+          </div>
+          <div class="form-group col-auto">
+            <button id="btn-run-sort" class="btn btn-secondary">Run Merge Sort</button>
+          </div>
+        </div>
+        <div id="sort-results" class="demo-box">
+          Click button to execute O(N log N) Merge Sort.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p>VIT Pune | Department of Information Technology | Semester 3 DSA Course Project</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
