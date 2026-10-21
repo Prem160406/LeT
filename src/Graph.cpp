@@ -194,3 +194,79 @@ void Graph::printGraph() const {
         std::cout << std::endl;
     }
 }
+
+void Graph::getAllVertexCodes(CustomArray<std::string>& outCodes) const {
+    outCodes.clear();
+    for (size_t i = 0; i < vertexCount; ++i) {
+        outCodes.push_back(vertices[i].assetCode);
+    }
+}
+
+void Graph::getAllEdges(CustomArray<GraphEdgeInfo>& outEdges) const {
+    outEdges.clear();
+    for (size_t i = 0; i < vertexCount; ++i) {
+        EdgeNode* edge = vertices[i].edges;
+        while (edge != nullptr) {
+            outEdges.push_back(GraphEdgeInfo(vertices[i].assetCode, edge->targetAssetCode, edge->dependencyWeight));
+            edge = edge->next;
+        }
+    }
+}
+
+void Graph::analyzeAllSources(CustomArray<SourceAnalysisInfo>& outSources) const {
+    outSources.clear();
+
+    for (size_t i = 0; i < vertexCount; ++i) {
+        const std::string& code = vertices[i].assetCode;
+
+        // 1. Calculate Out-Degree (Direct dependents)
+        int outD = 0;
+        EdgeNode* edge = vertices[i].edges;
+        while (edge != nullptr) {
+            ++outD;
+            edge = edge->next;
+        }
+
+        // 2. Calculate In-Degree (Upstream dependencies)
+        int inD = 0;
+        for (size_t j = 0; j < vertexCount; ++j) {
+            if (i == j) continue;
+            EdgeNode* otherEdge = vertices[j].edges;
+            while (otherEdge != nullptr) {
+                if (otherEdge->targetNodeIndex == static_cast<int>(i)) {
+                    ++inD;
+                    break;
+                }
+                otherEdge = otherEdge->next;
+            }
+        }
+
+        // 3. Compute Transitive Blast Radius via BFS
+        int blast = getBlastRadiusCount(code);
+
+        // 4. Assign Criticality Assessment
+        std::string crit;
+        if (blast >= 4) {
+            crit = "CRITICAL (SPOF)";
+        } else if (blast >= 2) {
+            crit = "HIGH IMPACT";
+        } else if (blast == 1) {
+            crit = "MODERATE";
+        } else {
+            crit = "TERMINAL LEAF";
+        }
+
+        outSources.push_back(SourceAnalysisInfo(code, outD, inD, blast, crit));
+    }
+
+    // Sort sources by totalBlastRadius descending (highest systemic risk first)
+    for (size_t i = 1; i < outSources.size(); ++i) {
+        SourceAnalysisInfo key = outSources[i];
+        int j = static_cast<int>(i) - 1;
+        while (j >= 0 && outSources[j].totalBlastRadius < key.totalBlastRadius) {
+            outSources[j + 1] = outSources[j];
+            --j;
+        }
+        outSources[j + 1] = key;
+    }
+}

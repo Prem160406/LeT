@@ -30,6 +30,35 @@ struct VertexNode {
 };
 
 /**
+ * @brief Plain data struct representing a directed dependency edge.
+ */
+struct GraphEdgeInfo {
+    std::string from;
+    std::string to;
+    double weight;
+
+    GraphEdgeInfo() : from(""), to(""), weight(1.0) {}
+    GraphEdgeInfo(const std::string& f, const std::string& t, double w = 1.0)
+        : from(f), to(t), weight(w) {}
+};
+
+/**
+ * @brief Root source analysis metrics for Single Point of Failure (SPOF) detection.
+ */
+struct SourceAnalysisInfo {
+    std::string assetCode;
+    int outDegree;             // Direct dependents
+    int inDegree;              // Inbound dependencies
+    int totalBlastRadius;      // Transitive dependents (BFS)
+    std::string criticality;   // "CRITICAL (SPOF)", "HIGH IMPACT", "MODERATE", "TERMINAL"
+
+    SourceAnalysisInfo()
+        : assetCode(""), outDegree(0), inDegree(0), totalBlastRadius(0), criticality("TERMINAL") {}
+    SourceAnalysisInfo(const std::string& code, int outD, int inD, int blast, const std::string& crit)
+        : assetCode(code), outDegree(outD), inDegree(inD), totalBlastRadius(blast), criticality(crit) {}
+};
+
+/**
  * @brief Custom Directed Graph using Adjacency List for asset dependency modeling.
  * Used for blast-radius analysis: when a critical asset fails, BFS/DFS finds all
  * downstream equipment that depend on it directly or indirectly.
@@ -117,6 +146,24 @@ public:
      * Time Complexity: O(V + E).
      */
     void printGraph() const;
+
+    /**
+     * @brief Retrieves all vertex asset codes in the graph.
+     * Time Complexity: O(V).
+     */
+    void getAllVertexCodes(CustomArray<std::string>& outCodes) const;
+
+    /**
+     * @brief Retrieves all directed edges in the graph.
+     * Time Complexity: O(V + E).
+     */
+    void getAllEdges(CustomArray<GraphEdgeInfo>& outEdges) const;
+
+    /**
+     * @brief Analyzes all vertices for root source criticality, out-degree, and blast radius.
+     * Time Complexity: O(V * (V + E)).
+     */
+    void analyzeAllSources(CustomArray<SourceAnalysisInfo>& outSources) const;
 };
 
 #endif // GRAPH_H

@@ -63,10 +63,13 @@ struct TriageTask {
     double riskScore;
     long long timestamp;
     std::string description;
+    int blastRadiusCount;       // Transitive dependents affected (Step 5)
+    double blastMultiplier;     // Multiplier applied to base risk (Step 5)
 
     TriageTask();
     TriageTask(const std::string& tId, const std::string& aCode, const std::string& aName,
-               int sev, int overdue, double drift, double risk, long long ts, const std::string& desc);
+               int sev, int overdue, double drift, double risk, long long ts, const std::string& desc,
+               int blastCount = 0, double blastMult = 1.0);
 
     // Comparator for Max-Heap ordering
     bool operator<(const TriageTask& other) const {

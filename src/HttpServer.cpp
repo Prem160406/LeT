@@ -150,7 +150,7 @@ void HttpServer::start() {
             return;
         }
 
-        // Steps 2-4: Process buffered report through HashTable, DLL, Drift calc, and MaxHeap
+        // Steps 2-5: Process buffered report through HashTable, DLL, Drift calc, Blast-Radius, and MaxHeap
         bool processed = engine.processNextBufferReport();
         if (processed) {
             res.set_content("{\"status\":\"success\",\"message\":\"Report enqueued and prioritized into Max-Heap\"}", "application/json");
@@ -179,6 +179,8 @@ void HttpServer::start() {
                << "\"daysOverdue\":" << tasks[i].daysOverdue << ","
                << "\"driftVelocity\":" << tasks[i].driftVelocity << ","
                << "\"riskScore\":" << tasks[i].riskScore << ","
+               << "\"blastRadiusCount\":" << tasks[i].blastRadiusCount << ","
+               << "\"blastMultiplier\":" << tasks[i].blastMultiplier << ","
                << "\"timestamp\":" << tasks[i].timestamp << ","
                << "\"description\":\"" << tasks[i].description << "\""
                << "}";
@@ -280,6 +282,264 @@ void HttpServer::start() {
         }
         ss << "]";
         res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/graph — Complete dependency topology & source analysis
+    // =========================================================================
+    server.Get("/api/graph", [this](const httplib_single::Request&, httplib_single::Response& res) {
+        CustomArray<std::string> vertexCodes;
+        CustomArray<GraphEdgeInfo> edges;
+        CustomArray<SourceAnalysisInfo> sources;
+
+        engine.getGraph().getAllVertexCodes(vertexCodes);
+        engine.getGraph().getAllEdges(edges);
+        engine.getGraph().analyzeAllSources(sources);
+
+        std::ostringstream ss;
+        ss << "{\"nodes\":[";
+        for (size_t i = 0; i < vertexCodes.size(); ++i) {
+            if (i > 0) ss << ",";
+            Asset* a = engine.getAsset(vertexCodes[i]);
+            std::string name = a ? a->name : vertexCodes[i];
+            std::string loc = a ? a->location : "Main Lab";
+            int faults = a ? a->totalFaultCount : 0;
+            double dt = a ? a->totalDowntimeHours : 0.0;
+            int blast = engine.getGraph().getBlastRadiusCount(vertexCodes[i]);
+
+            ss << "{"
+               << "\"id\":\"" << vertexCodes[i] << "\","
+               << "\"name\":\"" << name << "\","
+               << "\"location\":\"" << loc << "\","
+               << "\"faults\":" << faults << ","
+               << "\"downtime\":" << dt << ","
+               << "\"blastRadius\":" << blast
+               << "}";
+        }
+        ss << "],\"edges\":[";
+        for (size_t i = 0; i < edges.size(); ++i) {
+            if (i > 0) ss << ",";
+            ss << "{"
+               << "\"from\":\"" << edges[i].from << "\","
+               << "\"to\":\"" << edges[i].to << "\","
+               << "\"weight\":" << edges[i].weight
+               << "}";
+        }
+        ss << "],\"sources\":[";
+        for (size_t i = 0; i < sources.size(); ++i) {
+            if (i > 0) ss << ",";
+            Asset* a = engine.getAsset(sources[i].assetCode);
+            std::string name = a ? a->name : sources[i].assetCode;
+            ss << "{"
+               << "\"assetCode\":\"" << sources[i].assetCode << "\","
+               << "\"name\":\"" << name << "\","
+               << "\"outDegree\":" << sources[i].outDegree << ","
+               << "\"inDegree\":" << sources[i].inDegree << ","
+               << "\"totalBlastRadius\":" << sources[i].totalBlastRadius << ","
+               << "\"criticality\":\"" << sources[i].criticality << "\""
+               << "}";
+        }
+        ss << "]}";
+
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/reports/faulty — Faulty Equipment Audit (Merge Sort Powered)
+    // =========================================================================
+    server.Get("/api/reports/faulty", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        std::string sortBy = req.get_param_value("sort");
+        SortCriterion crit = SORT_BY_DOWNTIME_DESC;
+        if (sortBy == "faults") crit = SORT_BY_FAULT_COUNT_DESC;
+        else if (sortBy == "calib") crit = SORT_BY_CALIBRATION_DUE_ASC;
+
+        CustomArray<Asset*> faultyAssets;
+        engine.getFaultyEquipmentReport(crit, faultyAssets);
+
+        std::ostringstream ss;
+        ss << "[";
+        for (size_t i = 0; i < faultyAssets.size(); ++i) {
+            if (i > 0) ss << ",";
+            double latestDrift = 0.0;
+            double latestDev = 0.0;
+            const HistoryEntry* latest = faultyAssets[i]->history->getLatestEntry();
+            if (latest != nullptr) {
+                latestDrift = latest->computedDrift;
+                latestDev = latest->measuredDeviation;
+            }
+            int blast = engine.getGraph().getBlastRadiusCount(faultyAssets[i]->assetCode);
+
+            ss << "{"
+               << "\"assetCode\":\"" << faultyAssets[i]->assetCode << "\","
+               << "\"name\":\"" << faultyAssets[i]->name << "\","
+               << "\"location\":\"" << faultyAssets[i]->location << "\","
+               << "\"totalFaultCount\":" << faultyAssets[i]->totalFaultCount << ","
+               << "\"totalDowntimeHours\":" << faultyAssets[i]->totalDowntimeHours << ","
+               << "\"latestDeviation\":" << latestDev << ","
+               << "\"latestDriftVelocity\":" << latestDrift << ","
+               << "\"blastRadiusCount\":" << blast << ","
+               << "\"nextCalibrationDue\":" << faultyAssets[i]->nextCalibrationDue
+               << "}";
+        }
+        ss << "]";
+
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/reports/sources — Critical Dependency Sources & SPOF Audit
+    // =========================================================================
+    server.Get("/api/reports/sources", [this](const httplib_single::Request&, httplib_single::Response& res) {
+        CustomArray<SourceAnalysisInfo> sources;
+        engine.getSourceEquipmentReport(sources);
+
+        std::ostringstream ss;
+        ss << "[";
+        for (size_t i = 0; i < sources.size(); ++i) {
+            if (i > 0) ss << ",";
+            Asset* a = engine.getAsset(sources[i].assetCode);
+            std::string name = a ? a->name : sources[i].assetCode;
+            std::string loc = a ? a->location : "Main Lab";
+
+            ss << "{"
+               << "\"assetCode\":\"" << sources[i].assetCode << "\","
+               << "\"name\":\"" << name << "\","
+               << "\"location\":\"" << loc << "\","
+               << "\"outDegree\":" << sources[i].outDegree << ","
+               << "\"inDegree\":" << sources[i].inDegree << ","
+               << "\"totalBlastRadius\":" << sources[i].totalBlastRadius << ","
+               << "\"criticality\":\"" << sources[i].criticality << "\""
+               << "}";
+        }
+        ss << "]";
+
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/reports/calibrations — AVL Tree Range Calibration Audit
+    // =========================================================================
+    server.Get("/api/reports/calibrations", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        long long startDue = 0;
+        long long endDue = 9999999999LL;
+
+        std::string startParam = req.get_param_value("start");
+        std::string endParam = req.get_param_value("end");
+        if (!startParam.empty()) startDue = std::stoll(startParam);
+        if (!endParam.empty()) endDue = std::stoll(endParam);
+
+        CustomArray<CalibrationItem> items;
+        engine.getUpcomingCalibrations(startDue, endDue, items);
+
+        std::ostringstream ss;
+        ss << "[";
+        for (size_t i = 0; i < items.size(); ++i) {
+            if (i > 0) ss << ",";
+            Asset* a = engine.getAsset(items[i].assetCode);
+            std::string loc = a ? a->location : "-";
+            ss << "{"
+               << "\"dueDate\":" << items[i].dueDate << ","
+               << "\"assetCode\":\"" << items[i].assetCode << "\","
+               << "\"assetName\":\"" << items[i].assetName << "\","
+               << "\"location\":\"" << loc << "\""
+               << "}";
+        }
+        ss << "]";
+
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/reports/export-csv — Downloadable RFC 4180 CSV Export
+    // =========================================================================
+    server.Get("/api/reports/export-csv", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        std::string type = req.get_param_value("type");
+        std::ostringstream csv;
+
+        if (type == "sources") {
+            csv << "Asset Code,Equipment Name,Location,Direct Dependents (Out-Degree),Upstream Inputs (In-Degree),Total Blast Radius,Criticality Status\r\n";
+            CustomArray<SourceAnalysisInfo> sources;
+            engine.getSourceEquipmentReport(sources);
+            for (size_t i = 0; i < sources.size(); ++i) {
+                Asset* a = engine.getAsset(sources[i].assetCode);
+                std::string name = a ? a->name : sources[i].assetCode;
+                std::string loc = a ? a->location : "Main Lab";
+                csv << "\"" << sources[i].assetCode << "\",\""
+                    << name << "\",\""
+                    << loc << "\","
+                    << sources[i].outDegree << ","
+                    << sources[i].inDegree << ","
+                    << sources[i].totalBlastRadius << ",\""
+                    << sources[i].criticality << "\"\r\n";
+            }
+        } else if (type == "calibrations") {
+            csv << "Calibration Due Date (Days/Epoch),Asset Code,Equipment Name,Lab Location\r\n";
+            CustomArray<CalibrationItem> items;
+            engine.getUpcomingCalibrations(0, 9999999999LL, items);
+            for (size_t i = 0; i < items.size(); ++i) {
+                Asset* a = engine.getAsset(items[i].assetCode);
+                std::string loc = a ? a->location : "-";
+                csv << items[i].dueDate << ",\""
+                    << items[i].assetCode << "\",\""
+                    << items[i].assetName << "\",\""
+                    << loc << "\"\r\n";
+            }
+        } else {
+            // Default: Faulty equipment report
+            csv << "Asset Code,Equipment Name,Location,Total Faults,Total Downtime (Hours),Latest Deviation,Latest Drift Velocity,Blast Radius (Affected Machines),Next Calibration Due\r\n";
+            CustomArray<Asset*> list;
+            engine.getFaultyEquipmentReport(SORT_BY_DOWNTIME_DESC, list);
+            for (size_t i = 0; i < list.size(); ++i) {
+                double drift = 0.0, dev = 0.0;
+                const HistoryEntry* h = list[i]->history->getLatestEntry();
+                if (h) { drift = h->computedDrift; dev = h->measuredDeviation; }
+                int blast = engine.getGraph().getBlastRadiusCount(list[i]->assetCode);
+
+                csv << "\"" << list[i]->assetCode << "\",\""
+                    << list[i]->name << "\",\""
+                    << list[i]->location << "\","
+                    << list[i]->totalFaultCount << ","
+                    << list[i]->totalDowntimeHours << ","
+                    << dev << ","
+                    << drift << ","
+                    << blast << ","
+                    << list[i]->nextCalibrationDue << "\r\n";
+            }
+        }
+
+        res.set_content(csv.str(), "text/csv");
+    });
+
+    // =========================================================================
+    // POST /api/simulate-cascade — Cascade failure simulation on root node
+    // =========================================================================
+    server.Post("/api/simulate-cascade", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        std::string asset = extractJsonString(req.body, "assetCode");
+        if (asset.empty()) asset = "LAB-UPS-01";
+
+        TriageTask topTask;
+        CustomArray<std::string> affected;
+        bool ok = engine.simulateFailureCascade(asset, topTask, affected);
+
+        if (ok) {
+            std::ostringstream ss;
+            ss << "{\"status\":\"success\","
+               << "\"simulatedAsset\":\"" << asset << "\","
+               << "\"taskId\":\"" << topTask.taskId << "\","
+               << "\"riskScore\":" << topTask.riskScore << ","
+               << "\"blastMultiplier\":" << topTask.blastMultiplier << ","
+               << "\"blastRadiusCount\":" << topTask.blastRadiusCount << ","
+               << "\"affectedDependents\":[";
+            for (size_t i = 0; i < affected.size(); ++i) {
+                if (i > 0) ss << ",";
+                ss << "\"" << affected[i] << "\"";
+            }
+            ss << "]}";
+            res.set_content(ss.str(), "application/json");
+        } else {
+            res.status = 404;
+            res.set_content("{\"status\":\"error\",\"message\":\"Asset not found for simulation.\"}", "application/json");
+        }
     });
 
     server.listen("127.0.0.1", port);

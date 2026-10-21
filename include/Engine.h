@@ -158,23 +158,52 @@ public:
     const HashTable& getHashTable() const { return assetRegistry; }
 
     // =========================================================================
-    // STUBBED ITEMS (30% Scope — See implementation site comments for handoff)
+    // PIPELINE STEP 5: Blast-Radius Prioritization Integration
     // =========================================================================
     /**
-     * @brief [STUBBED] Step 5: Computes blast-radius multiplier factor from Graph BFS/DFS.
+     * @brief Computes blast-radius multiplier factor from Graph BFS.
+     * Formula: 1.0 + (0.20 * dependentCount)
+     * Time Complexity: O(V + E) BFS traversal.
      */
     double calculateBlastRadiusFactor(const std::string& assetCode);
 
+    // =========================================================================
+    // COMPREHENSIVE REPORT GENERATION ENGINE
+    // =========================================================================
     /**
-     * @brief [STUBBED] Generates sorted compliance audit report using MergeSort.
+     * @brief Generates sorted compliance audit report using MergeSort.
+     * Time Complexity: O(N log N).
      */
     void generateComplianceReport(SortCriterion criterion, CustomArray<Asset*>& outReport);
 
     /**
-     * @brief [STUBBED] Range query for upcoming calibrations via AVL Tree.
+     * @brief Generates faulty equipment report sorted by downtime or fault count.
+     * Filters assets with non-zero faults or downtime, then sorts via MergeSort.
+     * Time Complexity: O(N log N).
+     */
+    void getFaultyEquipmentReport(SortCriterion criterion, CustomArray<Asset*>& outFaulty);
+
+    /**
+     * @brief Generates root source & single point of failure (SPOF) report.
+     * Analyzes out-degree, in-degree, and transitive blast radius from Graph.
+     * Time Complexity: O(V * (V + E)).
+     */
+    void getSourceEquipmentReport(CustomArray<SourceAnalysisInfo>& outSources);
+
+    /**
+     * @brief Range query for upcoming calibrations via self-balancing AVL Tree.
+     * Time Complexity: O(log N + K) where K is number of items in range.
      */
     void getUpcomingCalibrations(long long fromDate, long long toDate, 
                                  CustomArray<CalibrationItem>& outItems);
+
+    /**
+     * @brief Simulates a critical equipment failure cascade across the engine.
+     * Dispatches report through intake queue, updates history, evaluates blast radius,
+     * boosts risk score, and places top task in Max-Heap.
+     */
+    bool simulateFailureCascade(const std::string& assetCode, TriageTask& outTask,
+                                CustomArray<std::string>& outAffected);
 };
 
 #endif // ENGINE_H

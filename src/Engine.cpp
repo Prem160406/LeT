@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include <iostream>
 #include <cmath>
+#include <ctime>
 
 Engine::Engine(int intakeCapacity)
     : assetRegistry(61), intakeBuffer(intakeCapacity), triageQueue(64),
@@ -53,15 +54,21 @@ bool Engine::processNextBufferReport() {
     targetAsset->history->append(newEntry);
     targetAsset->totalFaultCount++;
 
-    // Step 4: Calculate Composite Risk Score and insert into Max-Heap
-    // Formula: Risk = 3*Severity + 2*DaysOverdue + 5*|DriftVelocity|
+    // Step 4: Calculate Composite Base Risk Score
+    // Formula: BaseRisk = 3*Severity + 2*DaysOverdue + 5*|DriftVelocity|
     // ASSUMPTION: absolute value applied to Drift Velocity term so that negative drift 
     // does not reduce urgency — deviates from literal synopsis formula by design.
-    double riskScore = MaxHeap::computeRiskScore(report.severity, report.daysOverdue, driftVelocity);
+    double baseRiskScore = MaxHeap::computeRiskScore(report.severity, report.daysOverdue, driftVelocity);
+
+    // Step 5: Factoring Blast Radius from Dependency Graph (Transitive impact discovery)
+    // Formula: EffectiveRisk = BaseRisk * (1.0 + 0.20 * dependentCount)
+    int blastRadiusCount = dependencyGraph.getBlastRadiusCount(targetAsset->assetCode);
+    double blastMultiplier = calculateBlastRadiusFactor(targetAsset->assetCode);
+    double effectiveRiskScore = baseRiskScore * blastMultiplier;
 
     TriageTask task(report.reportId, targetAsset->assetCode, targetAsset->name,
-                   report.severity, report.daysOverdue, driftVelocity, riskScore,
-                   report.timestamp, report.description);
+                   report.severity, report.daysOverdue, driftVelocity, effectiveRiskScore,
+                   report.timestamp, report.description, blastRadiusCount, blastMultiplier);
     
     // Insert into Max-Heap priority queue (O(log N))
     triageQueue.insert(task);
@@ -228,69 +235,97 @@ size_t Engine::getUndoStackDepth() const {
  *     3. Recompile and verify via `main.cpp` demo suite.
  * ============================================================================
  */
+// =============================================================================
+// PIPELINE STEP 5 & ADVANCED REPORT GENERATION IMPLEMENTATIONS
+// =============================================================================
+
+/**
+ * Time Complexity: O(V + E).
+ * Performs Breadth-First Search on Dependency Graph to find all directly & indirectly
+ * affected downstream equipment, then computes the prioritization multiplier:
+ * Formula: EffectiveRisk = BaseRisk * (1.0 + 0.20 * dependentCount)
+ */
 double Engine::calculateBlastRadiusFactor(const std::string& assetCode) {
-    // STUB IMPLEMENTATION (Returns neutral 1.0 multiplier until Step 5 wiring is enabled)
-    // To complete:
-    // CustomArray<std::string> affected;
-    // dependencyGraph.bfs(assetCode, affected);
-    // return 1.0 + (0.20 * static_cast<double>(affected.size()));
-    (void)assetCode;
-    return 1.0;
+    CustomArray<std::string> affected;
+    dependencyGraph.bfs(assetCode, affected);
+    return 1.0 + (0.20 * static_cast<double>(affected.size()));
 }
 
 /**
- * ============================================================================
- * [HANDOFF STUB 2] Compliance Reporting Feature built on top of Merge Sort
- * ============================================================================
- * (a) INPUTS / OUTPUTS:
- *     - Inputs:  SortCriterion criterion (e.g. SORT_BY_DOWNTIME_DESC, SORT_BY_FAULT_COUNT_DESC)
- *     - Outputs: CustomArray<Asset*>& outReport (Sorted list of asset pointers)
- *
- * (b) FUNCTIONS & STRUCTURES CALLED:
- *     - assetRegistry.getAllAssets(allAssets) [src/HashTable.cpp]
- *     - MergeSort::sort(outReport, criterion) [src/MergeSort.cpp]
- *
- * (c) FINALIZED DESIGN DECISION:
- *     - MergeSort is fully implemented and tested standalone in Phase 2.
- *     - In this 70% milestone, the business report formatting and UI presentation
- *       are deferred.
- *
- * (d) EXACT NEXT ACTION FOR RESUMING DEVELOPER:
- *     1. Call assetRegistry.getAllAssets(outReport);
- *     2. Call MergeSort::sort(outReport, criterion);
- *     3. Expose endpoint `GET /api/compliance-report?sort=downtime` in HttpServer.cpp.
- * ============================================================================
+ * Time Complexity: O(N log N).
+ * Collects all registered assets from Hash Table and sorts them via custom MergeSort.
  */
 void Engine::generateComplianceReport(SortCriterion criterion, CustomArray<Asset*>& outReport) {
-    // STUB IMPLEMENTATION
-    // To complete:
     assetRegistry.getAllAssets(outReport);
     MergeSort::sort(outReport, criterion);
 }
 
 /**
- * ============================================================================
- * [HANDOFF STUB 3] Frontend View for AVL-Driven Calibration Scheduling
- * ============================================================================
- * (a) INPUTS / OUTPUTS:
- *     - Inputs:  long long fromDate, long long toDate (Epoch timestamps)
- *     - Outputs: CustomArray<CalibrationItem>& outItems (Calibrations in date range)
- *
- * (b) FUNCTIONS & STRUCTURES CALLED:
- *     - calibrationIndex.getRange(fromDate, toDate, outItems) [src/AVLTree.cpp]
- *
- * (c) FINALIZED DESIGN DECISION:
- *     - AVL Tree range query runs in O(log N + K).
- *     - Calibration records are indexed during asset registration.
- *
- * (d) EXACT NEXT ACTION FOR RESUMING DEVELOPER:
- *     1. Invoke calibrationIndex.getRange(fromDate, toDate, outItems);
- *     2. Add frontend date-picker component in index.html.
- * ============================================================================
+ * Time Complexity: O(N log N).
+ * Gathers faulty equipment (non-zero fault count or accumulated downtime),
+ * then sorts by chosen criteria (downtime, fault count, etc.) using MergeSort.
+ */
+void Engine::getFaultyEquipmentReport(SortCriterion criterion, CustomArray<Asset*>& outFaulty) {
+    CustomArray<Asset*> allAssets;
+    assetRegistry.getAllAssets(allAssets);
+    outFaulty.clear();
+    for (size_t i = 0; i < allAssets.size(); ++i) {
+        if (allAssets[i]->totalFaultCount > 0 || allAssets[i]->totalDowntimeHours > 0.0) {
+            outFaulty.push_back(allAssets[i]);
+        }
+    }
+    MergeSort::sort(outFaulty, criterion);
+}
+
+/**
+ * Time Complexity: O(V * (V + E)).
+ * Leverages Graph adjacency lists and BFS to compute in-degree, out-degree,
+ * transitive blast radius, and Single Point of Failure (SPOF) classification for all nodes.
+ */
+void Engine::getSourceEquipmentReport(CustomArray<SourceAnalysisInfo>& outSources) {
+    dependencyGraph.analyzeAllSources(outSources);
+}
+
+/**
+ * Time Complexity: O(log N + K).
+ * Range query using self-balancing AVL Tree on calibration due dates.
  */
 void Engine::getUpcomingCalibrations(long long fromDate, long long toDate,
                                      CustomArray<CalibrationItem>& outItems) {
-    // STUB IMPLEMENTATION
-    // To complete:
     calibrationIndex.getRange(fromDate, toDate, outItems);
+}
+
+/**
+ * @brief Simulates a critical catastrophic failure on a root equipment node.
+ * Demonstrates end-to-end pipeline: Intake Enqueue -> Hash Lookup -> DLL Append ->
+ * Drift Rate Calc -> Graph BFS Blast Radius Multiplication -> Max-Heap Insertion.
+ */
+bool Engine::simulateFailureCascade(const std::string& assetCode, TriageTask& outTask,
+                                    CustomArray<std::string>& outAffected) {
+    Asset* target = assetRegistry.find(assetCode);
+    if (target == nullptr) {
+        return false;
+    }
+
+    // Discover affected downstream assets via BFS
+    dependencyGraph.bfs(assetCode, outAffected);
+
+    // Formulate emergency cascade report
+    long long now = static_cast<long long>(time(nullptr));
+    std::string reportId = "CASCADE-SIM-" + std::to_string(rand() % 9000 + 1000);
+    FaultReport cascadeReport(reportId, assetCode, 5, 14, 28.5, now,
+                             "SIMULATED CATASTROPHIC ROOT FAILURE: Subsystem Offline");
+
+    // Push into Circular Queue
+    if (!submitReportToBuffer(cascadeReport)) {
+        return false;
+    }
+
+    // Process through pipeline steps 1-5
+    if (!processNextBufferReport()) {
+        return false;
+    }
+
+    // Peek the newly inserted high-urgency task from Max-Heap
+    return peekHighestUrgencyTask(outTask);
 }

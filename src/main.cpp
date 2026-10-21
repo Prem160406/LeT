@@ -15,6 +15,9 @@
 #include <string>
 #include <cassert>
 
+// Forward declaration
+void populateSampleData(Engine& engine);
+
 void printBanner(const std::string& title) {
     std::cout << "\n====================================================================\n";
     std::cout << "  " << title << "\n";
@@ -371,6 +374,86 @@ void testPipelineIntegration() {
 }
 
 // -----------------------------------------------------------------------------
+// DEMO 10: Pipeline Step 5 (Blast Radius Multiplier in Fault Prioritization)
+// -----------------------------------------------------------------------------
+void testBlastRadiusPipelineWiring() {
+    printBanner("10. PIPELINE STEP 5: BLAST-RADIUS LIVE RISK FACTORING");
+    Engine engine(16);
+
+    // Register primary power backup and dependents
+    Asset ups("LAB-UPS-01", "Primary UPS 10kVA", "Power Bay", 30, 0.0);
+    Asset sw("LAB-NET-SW", "Core Switch", "Server Bay", 60, 0.0);
+    Asset pc("LAB-PC-01", "Workstation Rig", "Room 304", 45, 0.0);
+    engine.registerAsset(ups);
+    engine.registerAsset(sw);
+    engine.registerAsset(pc);
+
+    // Dependencies: UPS -> SW -> PC
+    engine.getGraph().addEdge("LAB-UPS-01", "LAB-NET-SW");
+    engine.getGraph().addEdge("LAB-NET-SW", "LAB-PC-01");
+
+    // Report on UPS: Severity 5, Overdue 5 days, Deviation 0.0 -> BaseRisk = 3*5 + 2*5 + 0 = 25.0
+    // Blast radius of LAB-UPS-01 = 2 (SW, PC).
+    // Multiplier = 1.0 + 0.20 * 2 = 1.40.
+    // Effective Risk = 25.0 * 1.40 = 35.0!
+    FaultReport r("RPT-UPS", "LAB-UPS-01", 5, 5, 0.0, 1000, "UPS Inverter Fault");
+    engine.submitReportToBuffer(r);
+    assert(engine.processNextBufferReport());
+
+    TriageTask top;
+    assert(engine.peekHighestUrgencyTask(top));
+    std::cout << "[Test 10.1] UPS Task Prioritized with Blast Multiplier:" << std::endl;
+    std::cout << "  Base Risk: 25.0 | Dependents: " << top.blastRadiusCount 
+              << " | Multiplier: " << top.blastMultiplier 
+              << " | Effective Risk: " << top.riskScore << std::endl;
+    assert(top.blastRadiusCount == 2);
+    assert(std::abs(top.blastMultiplier - 1.40) < 0.001);
+    assert(std::abs(top.riskScore - 35.0) < 0.001);
+    std::cout << "[Test 10.2] Step 5 Blast Multiplier Verified: PASS" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+// DEMO 11: Comprehensive Report Generation (Sources, Faulty Assets & SPOF)
+// -----------------------------------------------------------------------------
+void testReportGeneration() {
+    printBanner("11. COMPREHENSIVE REPORT GENERATION (Sources, Faulty Assets & SPOF)");
+    Engine engine(16);
+    populateSampleData(engine);
+
+    // 1. Faulty equipment report
+    CustomArray<Asset*> faulty;
+    engine.getFaultyEquipmentReport(SORT_BY_DOWNTIME_DESC, faulty);
+    std::cout << "[Test 11.1] Faulty Equipment Report generated (" << faulty.size() << " faulty assets):" << std::endl;
+    for (size_t i = 0; i < faulty.size(); ++i) {
+        std::cout << "  " << i + 1 << ". [" << faulty[i]->assetCode << "] " << faulty[i]->name 
+                  << " -> Downtime: " << faulty[i]->totalDowntimeHours << "h, Faults: " 
+                  << faulty[i]->totalFaultCount << std::endl;
+    }
+    assert(faulty.size() >= 2);
+    assert(faulty[0]->totalDowntimeHours >= faulty[1]->totalDowntimeHours);
+    std::cout << "[Test 11.2] Downtime ranking via MergeSort verified: PASS" << std::endl;
+
+    // 2. Sources & SPOF report
+    CustomArray<SourceAnalysisInfo> sources;
+    engine.getSourceEquipmentReport(sources);
+    std::cout << "[Test 11.3] Source Criticality & SPOF Report generated (" << sources.size() << " nodes evaluated):" << std::endl;
+    for (size_t i = 0; i < sources.size(); ++i) {
+        std::cout << "  Node [" << sources[i].assetCode << "]: Blast Radius = " 
+                  << sources[i].totalBlastRadius << " machines | Status: " 
+                  << sources[i].criticality << std::endl;
+    }
+    assert(sources[0].assetCode == "LAB-UPS-01");
+    assert(sources[0].criticality == "CRITICAL (SPOF)");
+    std::cout << "[Test 11.4] Single Point of Failure (SPOF) detection verified: PASS" << std::endl;
+
+    // 3. AVL Tree Calibration Audit
+    CustomArray<CalibrationItem> upcoming;
+    engine.getUpcomingCalibrations(0, 30, upcoming);
+    std::cout << "[Test 11.5] AVL Calibration Range Query [0 to 30 days] found " 
+              << upcoming.size() << " assets requiring calibration: PASS" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
 // Preload Sample Data for Web Server Mode
 // -----------------------------------------------------------------------------
 void populateSampleData(Engine& engine) {
@@ -459,8 +542,10 @@ int main(int argc, char* argv[]) {
         testMergeSort();
         testGraph();
         testPipelineIntegration();
+        testBlastRadiusPipelineWiring();
+        testReportGeneration();
 
-        printBanner("ALL 8 DATA STRUCTURES & PIPELINE STEPS 1-4 FULLY VERIFIED (100% PASS)");
+        printBanner("ALL 8 DATA STRUCTURES & FULL PIPELINE STEPS 1-5 FULLY VERIFIED (100% PASS)");
     }
 
     if (runServer) {

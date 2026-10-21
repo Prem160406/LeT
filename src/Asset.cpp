@@ -22,12 +22,15 @@ FaultReport::FaultReport(const std::string& rId, const std::string& aCode, int s
 
 TriageTask::TriageTask()
     : taskId(""), assetCode(""), assetName(""), severity(1), daysOverdue(0),
-      driftVelocity(0.0), riskScore(0.0), timestamp(0), description("") {}
+      driftVelocity(0.0), riskScore(0.0), timestamp(0), description(""),
+      blastRadiusCount(0), blastMultiplier(1.0) {}
 
 TriageTask::TriageTask(const std::string& tId, const std::string& aCode, const std::string& aName,
-                       int sev, int overdue, double drift, double risk, long long ts, const std::string& desc)
+                       int sev, int overdue, double drift, double risk, long long ts, const std::string& desc,
+                       int blastCount, double blastMult)
     : taskId(tId), assetCode(aCode), assetName(aName), severity(sev), daysOverdue(overdue),
-      driftVelocity(drift), riskScore(risk), timestamp(ts), description(desc) {}
+      driftVelocity(drift), riskScore(risk), timestamp(ts), description(desc),
+      blastRadiusCount(blastCount), blastMultiplier(blastMult) {}
 
 Asset::Asset()
     : assetCode(""), name(""), location(""), nextCalibrationDue(0),
