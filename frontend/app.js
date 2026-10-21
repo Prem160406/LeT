@@ -1,90 +1,30 @@
+/**
+ * ============================================================================
+ * LAB OPERATIONS, EMERGENCY FAULT TRIAGE & CALIBRATION ENGINE
+ * Client Application & AI Copilot Controller — Zero Emojis
+ * ============================================================================
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Navigation Tabs
-  const navTabs = document.querySelectorAll('.tab-btn');
-  const tabPanes = document.querySelectorAll('.tab-pane');
+  // Global State
+  const state = {
+    assets: [],
+    triageTasks: [],
+    graphData: { nodes: [], edges: [], sources: [] },
+    faultyReport: [],
+    suppliersReport: [],
+    calibrations: [],
+    undoCount: 0,
+    activeTab: 'tab-operations',
+    activeSubtab: 'report-faulty',
+    selectedGraphNode: null,
+    animatingNodes: new Set(),
+    animationTimer: null,
+    inspectorMode: false
+  };
 
-  navTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      navTabs.forEach(t => t.classList.remove('active'));
-      tabPanes.forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      const target = document.getElementById(tab.dataset.tab);
-      if (target) target.classList.add('active');
-
-      if (tab.dataset.tab === 'tab-network') {
-        loadGraphData();
-      } else if (tab.dataset.tab === 'tab-reports') {
-        loadReportsData();
-      } else if (tab.dataset.tab === 'tab-calibrations') {
-        loadCalibrationSchedule();
-      }
-    });
-  });
-
-  // Report Subtabs
-  const subtabBtns = document.querySelectorAll('.subtab-btn');
-  const subtabContents = document.querySelectorAll('.subtab-content');
-
-  subtabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      subtabBtns.forEach(b => b.classList.remove('active'));
-      subtabContents.forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      const target = document.getElementById(btn.dataset.subtab);
-      if (target) target.classList.add('active');
-    });
-  });
-
-  // Core Elements
-  const formAddAsset = document.getElementById('form-add-asset');
-  const formSubmitReport = document.getElementById('form-submit-report');
-  const btnRefreshTriage = document.getElementById('btn-refresh-triage');
-  const btnUndo = document.getElementById('btn-undo');
-  const btnDispatch = document.getElementById('btn-dispatch');
-  const btnSimulateRoot = document.getElementById('btn-simulate-root');
-  const triageBody = document.getElementById('triage-body');
-
-  const btnFillDemoAsset = document.getElementById('btn-fill-demo-asset');
-  const btnFillDemoReport = document.getElementById('btn-fill-demo-report');
-
-  const valAssetCount = document.getElementById('val-asset-count');
-  const valTriageCount = document.getElementById('val-triage-count');
-  const valSpofCount = document.getElementById('val-spof-count');
-  const valCalibCount = document.getElementById('val-calib-count');
-  const undoCountSpan = document.getElementById('undo-count');
-
-  // Report Elements
-  const faultyReportBody = document.getElementById('faulty-report-body');
-  const sourcesReportBody = document.getElementById('sources-report-body');
-  const inventoryReportBody = document.getElementById('inventory-report-body');
-  const calibScheduleBody = document.getElementById('calib-schedule-body');
-  const selectFaultySort = document.getElementById('select-faulty-sort');
-  const btnRefreshFaulty = document.getElementById('btn-refresh-faulty-report');
-  const btnExportCsv = document.getElementById('btn-export-csv');
-  const btnExportCalibCsv = document.getElementById('btn-export-calib-csv');
-  const btnQueryCalib = document.getElementById('btn-query-calib');
-  const btnAllCalib = document.getElementById('btn-all-calib');
-
-  // Graph Canvas Elements
-  const canvas = document.getElementById('graph-canvas');
-  const ctx = canvas.getContext('2d');
-  const blastInput = document.getElementById('blast-asset-input');
-  const btnInspectBlast = document.getElementById('btn-inspect-blast');
-  const blastDetailsBox = document.getElementById('blast-details-box');
-  const spofSummaryList = document.getElementById('spof-summary-list');
-  const btnRefreshGraph = document.getElementById('btn-refresh-graph');
-
-  // Graph state
-  let graphNodes = [];
-  let graphEdges = [];
-  let activeFailedNode = 'LAB-UPS-01';
-  let activeAffectedNodes = [];
-  let animProgress = 0;
-
-  // =========================================================================
-  // NOTIFICATION TOAST SYSTEM (Replaces disruptive alerts)
-  // =========================================================================
-  function showToast(message, type = 'info') {
+  // Toast Notification System (replaces disruptive browser alert popups)
+  function showToast(message, type = 'info', duration = 3500) {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
@@ -93,333 +33,877 @@ document.addEventListener('DOMContentLoaded', () => {
     toast.textContent = message;
 
     container.appendChild(toast);
+
     setTimeout(() => {
-      toast.style.transition = 'opacity 0.3s ease';
       toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease';
       setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    }, duration);
   }
 
   // =========================================================================
-  // DEMO FILL HELPERS (Easy to use)
+  // SECTION NAVIGATION TABS & SUBTABS
   // =========================================================================
-  if (btnFillDemoAsset) {
-    btnFillDemoAsset.addEventListener('click', () => {
-      document.getElementById('asset-code').value = 'LAB-OSC-011';
-      document.getElementById('asset-name').value = 'Digital Storage Oscilloscope 100MHz';
-      document.getElementById('asset-loc').value = 'Room 302, Signal Processing';
-      document.getElementById('asset-calib').value = '25';
-      document.getElementById('asset-downtime').value = '2.0';
-      showToast('Sample asset data filled into registration form.', 'info');
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-tab');
+      const targetPane = document.getElementById(targetId);
+      if (targetPane) targetPane.classList.add('active');
+      state.activeTab = targetId;
+
+      if (targetId === 'tab-network') {
+        drawTopologyGraph();
+      } else if (targetId === 'tab-reports') {
+        loadSubtabReport(state.activeSubtab);
+      } else if (targetId === 'tab-calibrations') {
+        loadCalibrations();
+      }
+    });
+  });
+
+  document.querySelectorAll('.subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.subtab-content').forEach(c => c.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetSubtab = btn.getAttribute('data-subtab');
+      const targetContent = document.getElementById(targetSubtab);
+      if (targetContent) targetContent.classList.add('active');
+      state.activeSubtab = targetSubtab;
+
+      loadSubtabReport(targetSubtab);
+    });
+  });
+
+  // =========================================================================
+  // DSA ARCHITECTURE INSPECTOR TOGGLE & MODALS
+  // =========================================================================
+  const btnToggleInspector = document.getElementById('btn-toggle-inspector');
+  const inspectorStatusText = document.getElementById('inspector-status-text');
+  const inspectorBanner = document.getElementById('inspector-banner');
+
+  if (btnToggleInspector) {
+    btnToggleInspector.addEventListener('click', () => {
+      state.inspectorMode = !state.inspectorMode;
+      if (state.inspectorMode) {
+        document.body.classList.add('inspector-mode');
+        inspectorStatusText.textContent = 'ON';
+        btnToggleInspector.classList.remove('btn-outline-info');
+        btnToggleInspector.classList.add('btn-primary');
+        if (inspectorBanner) inspectorBanner.style.display = 'block';
+        showToast('DSA Inspector Mode Active: Algorithm cards highlighted', 'info');
+      } else {
+        document.body.classList.remove('inspector-mode');
+        inspectorStatusText.textContent = 'OFF';
+        btnToggleInspector.classList.add('btn-outline-info');
+        btnToggleInspector.classList.remove('btn-primary');
+        if (inspectorBanner) inspectorBanner.style.display = 'none';
+        showToast('DSA Inspector Mode Deactivated', 'info');
+      }
     });
   }
 
-  if (btnFillDemoReport) {
-    btnFillDemoReport.addEventListener('click', () => {
-      document.getElementById('report-asset').value = 'LAB-UPS-01';
-      document.getElementById('report-severity').value = '5';
-      document.getElementById('report-overdue').value = '10';
-      document.getElementById('report-deviation').value = '24.50';
-      document.getElementById('report-desc').value = 'Battery inverter phase fault and output voltage fluctuation';
-      showToast('Sample emergency fault data filled into report form.', 'info');
-    });
+  // DSA Spec Sheet Modal
+  const dsaModal = document.getElementById('dsa-modal');
+  const btnDsaSheet = document.getElementById('btn-dsa-sheet');
+  const btnCloseDsaModal = document.getElementById('btn-close-dsa-modal');
+
+  if (btnDsaSheet && dsaModal) {
+    btnDsaSheet.addEventListener('click', () => dsaModal.style.display = 'flex');
+  }
+  if (btnCloseDsaModal && dsaModal) {
+    btnCloseDsaModal.addEventListener('click', () => dsaModal.style.display = 'none');
   }
 
+  // Official PDF Certificate Modal
+  const pdfModal = document.getElementById('pdf-modal');
+  const btnGeneratePdf = document.getElementById('btn-generate-pdf');
+  const btnClosePdfModal = document.getElementById('btn-close-pdf-modal');
+  const btnPrintCertificate = document.getElementById('btn-print-certificate');
+
+  if (btnGeneratePdf && pdfModal) {
+    btnGeneratePdf.addEventListener('click', () => {
+      populateExecutivePdfCertificate();
+      pdfModal.style.display = 'flex';
+    });
+  }
+  if (btnClosePdfModal && pdfModal) {
+    btnClosePdfModal.addEventListener('click', () => pdfModal.style.display = 'none');
+  }
+  if (btnPrintCertificate) {
+    btnPrintCertificate.addEventListener('click', () => window.print());
+  }
+
+  // Close modals on backdrop click
+  window.addEventListener('click', (e) => {
+    if (e.target === dsaModal) dsaModal.style.display = 'none';
+    if (e.target === pdfModal) pdfModal.style.display = 'none';
+  });
+
   // =========================================================================
-  // DASHBOARD STATE SYNCHRONIZATION
+  // DATA FETCHING & SYNCHRONIZATION
   // =========================================================================
-  async function refreshDashboard() {
+  async function refreshAll() {
+    await Promise.all([
+      loadAssets(),
+      loadTriageQueue(),
+      loadGraphData(),
+      loadCalibrations()
+    ]);
+    if (state.activeTab === 'tab-reports') {
+      loadSubtabReport(state.activeSubtab);
+    }
+  }
+
+  async function loadAssets() {
     try {
-      // 1. Fetch Assets
-      const assetsRes = await fetch('/api/assets');
-      if (assetsRes.ok) {
-        const assets = await assetsRes.json();
-        valAssetCount.textContent = assets.length;
-        renderInventoryTable(assets);
-      }
-
-      // 2. Fetch Triage Tasks from Max-Heap
-      const triageRes = await fetch('/api/triage');
-      if (triageRes.ok) {
-        const tasks = await triageRes.json();
-        valTriageCount.textContent = tasks.length;
-        renderTriageTable(tasks);
-      }
-
-      // 3. Fetch Sources & SPOF Metrics
-      const sourcesRes = await fetch('/api/reports/sources');
-      if (sourcesRes.ok) {
-        const sources = await sourcesRes.json();
-        const spofs = sources.filter(s => s.criticality.includes('SPOF') || s.totalBlastRadius >= 3);
-        valSpofCount.textContent = spofs.length;
-        renderSpofList(sources);
-      }
-
-      // 4. Fetch Calibrations Count from AVL Tree
-      const calibRes = await fetch('/api/reports/calibrations?start=0&end=30');
-      if (calibRes.ok) {
-        const calibs = await calibRes.json();
-        valCalibCount.textContent = calibs.length;
-      }
+      const res = await fetch('/api/assets');
+      if (!res.ok) throw new Error('Failed to load assets');
+      state.assets = await res.json();
+      document.getElementById('val-asset-count').textContent = state.assets.length;
+      renderAllAssetsTable();
     } catch (err) {
-      console.error('Error refreshing dashboard:', err);
+      console.error(err);
+    }
+  }
+
+  async function loadTriageQueue() {
+    try {
+      const res = await fetch('/api/triage');
+      if (!res.ok) throw new Error('Failed to load triage queue');
+      state.triageTasks = await res.json();
+      document.getElementById('val-triage-count').textContent = state.triageTasks.length;
+      renderTriageTable();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadGraphData() {
+    try {
+      const res = await fetch('/api/graph');
+      if (!res.ok) throw new Error('Failed to load graph data');
+      state.graphData = await res.json();
+
+      const spofs = (state.graphData.sources || []).filter(s => s.criticality.includes('CRITICAL'));
+      document.getElementById('val-spof-count').textContent = spofs.length;
+
+      renderSpofSummary();
+      drawTopologyGraph();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadCalibrations() {
+    try {
+      const start = document.getElementById('calib-start-range')?.value || 0;
+      const end = document.getElementById('calib-end-range')?.value || 60;
+      const res = await fetch(`/api/reports/calibrations?start=${start}&end=${end}`);
+      if (!res.ok) throw new Error('Failed to load calibrations');
+      state.calibrations = await res.json();
+
+      // Count due within 30 days
+      const dueSoon = state.calibrations.filter(c => c.dueDate <= 30).length;
+      document.getElementById('val-calib-count').textContent = dueSoon;
+
+      renderCalibrationsTable();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Subtab report switcher
+  function loadSubtabReport(subtab) {
+    if (subtab === 'report-faulty') loadFaultyReport();
+    else if (subtab === 'report-suppliers') loadSuppliersReport();
+    else if (subtab === 'report-predictive') loadPredictiveReport();
+    else if (subtab === 'report-sources') renderSourcesTable();
+    else if (subtab === 'report-all-assets') renderAllAssetsTable();
+  }
+
+  async function loadFaultyReport() {
+    try {
+      const sortCriterion = document.getElementById('select-faulty-sort')?.value || 'downtime';
+      const res = await fetch(`/api/reports/faulty?sort=${sortCriterion}`);
+      if (!res.ok) throw new Error('Failed to load faulty equipment report');
+      state.faultyReport = await res.json();
+      renderFaultyTable();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadSuppliersReport() {
+    try {
+      const res = await fetch('/api/reports/suppliers');
+      if (!res.ok) throw new Error('Failed to load suppliers report');
+      state.suppliersReport = await res.json();
+      renderSuppliersTable();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadPredictiveReport() {
+    try {
+      const res = await fetch('/api/reports/faulty?sort=downtime');
+      if (!res.ok) throw new Error('Failed to load data for predictive report');
+      const list = await res.json();
+      renderPredictiveTable(list);
+    } catch (err) {
+      console.error(err);
     }
   }
 
   // =========================================================================
-  // TRIAGE TABLE RENDERING
+  // TABLE RENDERING
   // =========================================================================
-  function renderTriageTable(tasks) {
-    if (!tasks || tasks.length === 0) {
-      triageBody.innerHTML = `<tr><td colspan="11" class="empty-state">No triage tasks in queue. Submit a fault report above.</td></tr>`;
+  function renderTriageTable() {
+    const tbody = document.getElementById('triage-table-body');
+    if (!tbody) return;
+
+    if (!state.triageTasks || state.triageTasks.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No emergency triage tasks pending in queue.</td></tr>';
       return;
     }
 
-    triageBody.innerHTML = tasks.map((task, idx) => {
-      const isRoot = (idx === 0);
+    tbody.innerHTML = state.triageTasks.map((task, idx) => {
+      const isRoot = idx === 0;
+      const blastMultText = task.blastMultiplier > 1.0 ? ` (x${task.blastMultiplier.toFixed(2)})` : '';
       return `
         <tr class="${isRoot ? 'root-task' : ''}">
+          <td><code>${task.taskId}</code></td>
+          <td><strong>${task.assetCode}</strong></td>
+          <td>${task.assetName}</td>
+          <td><span class="badge ${task.severity >= 4 ? 'badge-risk' : 'badge-high'}">Sev ${task.severity}</span></td>
+          <td>${task.daysOverdue}d</td>
+          <td><code>${task.driftVelocity >= 0 ? '+' : ''}${task.driftVelocity.toFixed(3)} mm/s</code></td>
+          <td><span class="badge ${task.blastRadiusCount > 1 ? 'badge-spof' : 'badge-terminal'}">${task.blastRadiusCount} assets</span></td>
+          <td><span class="badge ${isRoot ? 'badge-root' : 'badge-risk'}">${task.riskScore.toFixed(1)}${blastMultText}</span></td>
+          <td>${task.description || '-'}</td>
           <td>
-            ${isRoot 
-              ? '<span class="badge badge-root">ROOT (MAX URGENCY)</span>' 
-              : '#' + (idx + 1)}
+            ${isRoot ? `<button class="btn btn-sm btn-danger" onclick="window.dispatchTopJob()">Dispatch Root</button>` : `<span class="badge badge-terminal">Rank #${idx + 1}</span>`}
           </td>
-          <td><code>${escapeHtml(task.taskId)}</code></td>
-          <td><strong>${escapeHtml(task.assetCode)}</strong></td>
-          <td>${escapeHtml(task.assetName || '-')}</td>
-          <td>${task.severity} / 5</td>
-          <td>${task.daysOverdue} d</td>
-          <td>${Number(task.driftVelocity).toFixed(4)}/s</td>
-          <td>
-            ${task.blastRadiusCount > 0 
-              ? `<span class="badge badge-high">${task.blastRadiusCount} machines</span>` 
-              : `<span class="badge badge-terminal">0 (leaf)</span>`}
-          </td>
-          <td><code>${Number(task.blastMultiplier || 1.0).toFixed(2)}x</code></td>
-          <td><span class="badge badge-risk">${Number(task.riskScore).toFixed(2)}</span></td>
-          <td>${escapeHtml(task.description || '-')}</td>
         </tr>
       `;
     }).join('');
   }
 
-  // =========================================================================
-  // FORM SUBMISSIONS
-  // =========================================================================
-  formAddAsset.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = {
-      assetCode: document.getElementById('asset-code').value.trim(),
-      name: document.getElementById('asset-name').value.trim(),
-      location: document.getElementById('asset-loc').value.trim(),
-      nextCalibrationDue: parseInt(document.getElementById('asset-calib').value, 10) || 30,
-      totalDowntimeHours: parseFloat(document.getElementById('asset-downtime').value) || 0.0
-    };
+  function renderFaultyTable() {
+    const tbody = document.getElementById('faulty-report-body');
+    if (!tbody) return;
 
-    try {
-      const res = await fetch('/api/assets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(data.message || 'Asset registered successfully.', 'success');
+    if (!state.faultyReport || state.faultyReport.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No faulty assets recorded. All equipment operating within tolerance.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.faultyReport.map(asset => {
+      const drift = asset.latestDriftVelocity || 0.0;
+      const blast = asset.blastRadiusCount || 0;
+      return `
+        <tr>
+          <td><code>${asset.assetCode}</code></td>
+          <td><strong>${asset.name}</strong></td>
+          <td>${asset.supplier || 'Standard Lab Corp'}</td>
+          <td>${asset.location || '-'}</td>
+          <td><span class="badge ${asset.totalFaultCount >= 2 ? 'badge-risk' : 'badge-high'}">${asset.totalFaultCount}</span></td>
+          <td><strong>${asset.totalDowntimeHours.toFixed(1)}h</strong></td>
+          <td><code>${drift >= 0 ? '+' : ''}${drift.toFixed(3)} mm/s</code></td>
+          <td><span class="badge ${blast > 1 ? 'badge-spof' : 'badge-terminal'}">${blast} machines</span></td>
+          <td>${asset.nextCalibrationDue}d</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderSuppliersTable() {
+    const tbody = document.getElementById('suppliers-report-body');
+    if (!tbody) return;
+
+    if (!state.suppliersReport || state.suppliersReport.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No supplier quality data available.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.suppliersReport.map(s => {
+      let tierBadge = 'badge-tier-a';
+      if (s.isLemon) tierBadge = 'badge-tier-c';
+      else if (s.tier.includes('Tier B')) tierBadge = 'badge-tier-b';
+
+      return `
+        <tr>
+          <td><strong>${s.supplierName}</strong></td>
+          <td>${s.assetCount}</td>
+          <td><span class="badge ${s.totalFaults >= 2 ? 'badge-risk' : 'badge-compliant'}">${s.totalFaults}</span></td>
+          <td>${s.totalDowntime.toFixed(1)}h</td>
+          <td><code>${s.avgDrift.toFixed(3)} mm/s</code></td>
+          <td><strong>${s.score.toFixed(1)} / 100</strong></td>
+          <td><span class="badge ${tierBadge}">${s.tier}</span></td>
+          <td>${s.recommendation}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderPredictiveTable(list) {
+    const tbody = document.getElementById('predictive-report-body');
+    if (!tbody) return;
+
+    if (!list || list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No active equipment telemetry to compute predictive RUL.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(item => {
+      const dev = item.latestDeviation || 0.0;
+      const drift = item.latestDriftVelocity || 0.0;
+      const margin = item.remainingMargin !== undefined ? item.remainingMargin : Math.max(0.0, 5.0 - Math.abs(dev));
+      const ettf = item.ettfDays !== undefined ? item.ettfDays : (Math.abs(drift) > 0.0001 ? margin / Math.abs(drift) : 999.0);
+      const urgency = item.failureUrgency || (ettf <= 3.0 ? 'CRITICAL IMMINENT' : (ettf <= 14.0 ? 'ACCELERATING DRIFT' : 'NOMINAL'));
+
+      let urgencyBadge = 'badge-compliant';
+      let actionText = 'Nominal operational status';
+      if (urgency.includes('CRITICAL')) {
+        urgencyBadge = 'badge-risk';
+        actionText = 'URGENT: Schedule immediate recalibration before sensor breach';
+      } else if (urgency.includes('ACCELERATING')) {
+        urgencyBadge = 'badge-high';
+        actionText = 'WARNING: Sensor drift accelerating; inspect bearing/detector';
+      }
+
+      const ettfText = ettf >= 900.0 ? '> 90 days (Stable)' : `${ettf.toFixed(1)} days`;
+
+      return `
+        <tr>
+          <td><code>${item.assetCode}</code></td>
+          <td><strong>${item.name}</strong></td>
+          <td><code>${dev.toFixed(2)} mm</code></td>
+          <td><code>${drift >= 0 ? '+' : ''}${drift.toFixed(3)} mm/s</code></td>
+          <td>${margin.toFixed(2)} mm</td>
+          <td><strong>${ettfText}</strong></td>
+          <td><span class="badge ${urgencyBadge}">${urgency}</span></td>
+          <td>${actionText}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderSourcesTable() {
+    const tbody = document.getElementById('sources-report-body');
+    if (!tbody) return;
+
+    const sources = state.graphData.sources || [];
+    if (sources.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No source dependency data computed.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = sources.map(src => {
+      const isCritical = src.criticality.includes('CRITICAL');
+      const isHigh = src.criticality.includes('HIGH');
+      const badgeClass = isCritical ? 'badge-spof' : (isHigh ? 'badge-high' : 'badge-terminal');
+
+      return `
+        <tr>
+          <td><code>${src.assetCode}</code></td>
+          <td><strong>${src.name}</strong></td>
+          <td>Main Facility</td>
+          <td>${src.outDegree} downstream</td>
+          <td>${src.inDegree} upstream</td>
+          <td><strong>${src.totalBlastRadius} machines</strong></td>
+          <td><span class="badge ${badgeClass}">${src.criticality}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderAllAssetsTable() {
+    const tbody = document.getElementById('all-assets-report-body');
+    if (!tbody) return;
+
+    if (!state.assets || state.assets.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No equipment currently registered in Hash Table.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.assets.map(a => `
+      <tr>
+        <td><code>${a.assetCode}</code></td>
+        <td><strong>${a.name}</strong></td>
+        <td>${a.supplier || 'Standard Lab Corp'}</td>
+        <td>${a.location || '-'}</td>
+        <td>${a.totalFaultCount}</td>
+        <td>${a.totalDowntimeHours.toFixed(1)}h</td>
+        <td>${a.nextCalibrationDue}d</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderCalibrationsTable() {
+    const tbody = document.getElementById('calib-table-body');
+    if (!tbody) return;
+
+    if (!state.calibrations || state.calibrations.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No calibration records in specified AVL range.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.calibrations.map(c => {
+      const isDueSoon = c.dueDate <= 15;
+      const isDueMod = c.dueDate <= 30;
+      const badgeClass = isDueSoon ? 'badge-overdue' : (isDueMod ? 'badge-due-soon' : 'badge-compliant');
+      const statusText = isDueSoon ? 'CRITICAL IMMINENT' : (isDueMod ? 'DUE SOON' : 'COMPLIANT');
+
+      return `
+        <tr>
+          <td><strong>Day ${c.dueDate}</strong></td>
+          <td><code>${c.assetCode}</code></td>
+          <td><strong>${c.assetName}</strong></td>
+          <td>${c.location || '-'}</td>
+          <td><span class="badge ${badgeClass}">${statusText}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderSpofSummary() {
+    const container = document.getElementById('spof-summary-list');
+    if (!container) return;
+
+    const sources = state.graphData.sources || [];
+    const critical = sources.filter(s => s.totalBlastRadius > 0);
+
+    if (critical.length === 0) {
+      container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem;">Zero single-point-of-failure vulnerabilities detected.</div>';
+      return;
+    }
+
+    container.innerHTML = critical.map(s => {
+      const isSpof = s.criticality.includes('CRITICAL');
+      return `
+        <div class="spof-row ${isSpof ? 'critical' : ''}">
+          <div>
+            <strong>${s.assetCode}</strong> (${s.name})
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">
+              Blast Radius: ${s.totalBlastRadius} machines | Direct: ${s.outDegree}
+            </div>
+          </div>
+          <span class="badge ${isSpof ? 'badge-spof' : 'badge-high'}">${s.criticality}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // =========================================================================
+  // ACTIONS: ADD ASSET & SUBMIT REPORT
+  // =========================================================================
+  const formAddAsset = document.getElementById('form-add-asset');
+  if (formAddAsset) {
+    formAddAsset.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('asset-code').value.trim();
+      const name = document.getElementById('asset-name').value.trim();
+      const supp = document.getElementById('asset-supplier').value.trim();
+      const loc = document.getElementById('asset-loc').value.trim();
+      const calib = parseInt(document.getElementById('asset-calib').value, 10) || 30;
+      const downtime = parseFloat(document.getElementById('asset-downtime').value) || 0.0;
+      const dependsOn = document.getElementById('asset-dependency').value.trim();
+
+      try {
+        const res = await fetch('/api/assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assetCode: code,
+            name: name,
+            supplier: supp,
+            location: loc,
+            nextCalibrationDue: calib,
+            totalDowntimeHours: downtime,
+            dependsOn: dependsOn
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to register asset');
+
+        showToast(`Asset ${code} registered successfully into Hash Table & AVL Tree`, 'success');
         formAddAsset.reset();
-        refreshDashboard();
-        loadGraphData();
-      } else {
-        showToast(data.message || 'Failed to register asset.', 'danger');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message, 'danger');
       }
-    } catch (err) {
-      showToast('Network error registering asset.', 'danger');
-    }
-  });
+    });
+  }
 
-  formSubmitReport.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = {
-      reportId: 'RPT-' + Math.floor(1000 + Math.random() * 9000),
-      assetCode: document.getElementById('report-asset').value.trim(),
-      severity: parseInt(document.getElementById('report-severity').value, 10),
-      daysOverdue: parseInt(document.getElementById('report-overdue').value, 10) || 0,
-      measuredDeviation: parseFloat(document.getElementById('report-deviation').value) || 0.0,
-      timestamp: Math.floor(Date.now() / 1000),
-      description: document.getElementById('report-desc').value.trim()
-    };
+  const formSubmitReport = document.getElementById('form-submit-report');
+  if (formSubmitReport) {
+    formSubmitReport.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const assetCode = document.getElementById('report-asset').value.trim();
+      const severity = parseInt(document.getElementById('report-severity').value, 10) || 3;
+      const overdue = parseInt(document.getElementById('report-overdue').value, 10) || 0;
+      const deviation = parseFloat(document.getElementById('report-deviation').value) || 0.0;
+      const desc = document.getElementById('report-desc').value.trim();
 
-    try {
-      const res = await fetch('/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showToast('Report enqueued: Ingestion -> Drift Calc -> Blast Radius -> Max-Heap updated.', 'success');
+      try {
+        const res = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reportId: `RPT-${Math.floor(1000 + Math.random() * 9000)}`,
+            assetCode: assetCode,
+            severity: severity,
+            daysOverdue: overdue,
+            measuredDeviation: deviation,
+            timestamp: Math.floor(Date.now() / 1000),
+            description: desc
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to submit report');
+
+        state.undoCount++;
+        document.getElementById('undo-count').textContent = state.undoCount;
+
+        showToast(`Report for ${assetCode} prioritized into Max-Heap`, 'success');
         formSubmitReport.reset();
-        refreshDashboard();
-      } else {
-        showToast(data.message || 'Failed to process fault report.', 'danger');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message, 'danger');
       }
-    } catch (err) {
-      showToast('Network error submitting fault report.', 'danger');
-    }
-  });
+    });
+  }
 
-  btnDispatch.addEventListener('click', async () => {
+  // 1-Click Quick Demo Sample Fillers
+  const btnFillDemoAsset = document.getElementById('btn-fill-demo-asset');
+  if (btnFillDemoAsset) {
+    btnFillDemoAsset.addEventListener('click', () => {
+      const demoNum = Math.floor(10 + Math.random() * 90);
+      document.getElementById('asset-code').value = `LAB-HPLC-${demoNum}`;
+      document.getElementById('asset-name').value = 'High-Performance Chromatograph';
+      document.getElementById('asset-supplier').value = 'Agilent Technologies';
+      document.getElementById('asset-loc').value = 'Chamber 402, Analytics';
+      document.getElementById('asset-calib').value = '25';
+      document.getElementById('asset-downtime').value = '4.5';
+      document.getElementById('asset-dependency').value = 'LAB-UPS-01';
+      showToast('Sample HPLC instrument populated into form', 'info');
+    });
+  }
+
+  const btnFillDemoReport = document.getElementById('btn-fill-demo-report');
+  if (btnFillDemoReport) {
+    btnFillDemoReport.addEventListener('click', () => {
+      document.getElementById('report-asset').value = 'LAB-SPEC-003';
+      document.getElementById('report-severity').value = '5';
+      document.getElementById('report-overdue').value = '12';
+      document.getElementById('report-deviation').value = '6.8';
+      document.getElementById('report-desc').value = 'Severe photodetector saturation & temperature spike';
+      showToast('Sample critical fault ticket populated into form', 'info');
+    });
+  }
+
+  // =========================================================================
+  // ACTIONS: DISPATCH TOP, UNDO, CASCADE SIMULATION
+  // =========================================================================
+  window.dispatchTopJob = async function() {
     try {
       const res = await fetch('/api/dispatch', { method: 'POST' });
       const data = await res.json();
-      if (res.ok) {
-        showToast(`Dispatched top task: ${data.dispatched.taskId} on ${data.dispatched.assetCode} (Risk: ${data.dispatched.riskScore})`, 'success');
-        refreshDashboard();
-      } else {
-        showToast(data.message || 'Triage queue is empty.', 'info');
-      }
-    } catch (err) {
-      showToast('Error dispatching triage task.', 'danger');
-    }
-  });
+      if (!res.ok) throw new Error(data.message || 'Failed to dispatch top job');
 
-  btnUndo.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/undo', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(`Rollback successful: ${data.message}`, 'success');
-        undoCountSpan.textContent = data.remainingUndo;
-        refreshDashboard();
-      } else {
-        showToast(data.message || 'Undo stack is empty.', 'info');
-      }
-    } catch (err) {
-      showToast('Error triggering rollback.', 'danger');
-    }
-  });
+      state.undoCount++;
+      document.getElementById('undo-count').textContent = state.undoCount;
 
-  // Catastrophic Cascade Simulation Button
-  btnSimulateRoot.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/simulate-cascade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assetCode: 'LAB-UPS-01' })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(`Cascade Simulated: Outage on ${data.simulatedAsset} affected ${data.blastRadiusCount} machines (${data.blastMultiplier}x risk boost)`, 'danger');
-        
-        // Highlight in visual network
-        activeFailedNode = data.simulatedAsset;
-        activeAffectedNodes = data.affectedDependents;
-        blastInput.value = data.simulatedAsset;
-        
-        // Switch to Network tab
-        document.querySelector('[data-tab="tab-network"]').click();
-        renderBlastDetails(data.simulatedAsset, data.affectedDependents);
-        refreshDashboard();
-      } else {
-        showToast(data.message || 'Simulation failed.', 'danger');
-      }
+      showToast(`Dispatched Task ${data.dispatched.taskId} for ${data.dispatched.assetCode} (Risk: ${data.dispatched.riskScore.toFixed(1)})`, 'success');
+      await refreshAll();
     } catch (err) {
-      showToast('Network error triggering simulation.', 'danger');
+      showToast(err.message, 'danger');
     }
-  });
+  };
 
-  btnRefreshTriage.addEventListener('click', () => {
-    refreshDashboard();
-    showToast('Triage queue refreshed.', 'info');
-  });
+  const btnDispatch = document.getElementById('btn-dispatch');
+  if (btnDispatch) btnDispatch.addEventListener('click', window.dispatchTopJob);
+
+  const btnUndo = document.getElementById('btn-undo');
+  if (btnUndo) {
+    btnUndo.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/undo', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Undo failed');
+
+        state.undoCount = Math.max(0, data.remainingUndo || 0);
+        document.getElementById('undo-count').textContent = state.undoCount;
+
+        showToast(data.message, 'info');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    });
+  }
+
+  const btnSimulateRoot = document.getElementById('btn-simulate-root');
+  if (btnSimulateRoot) {
+    btnSimulateRoot.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/simulate-cascade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetCode: 'LAB-UPS-01' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Simulation failed');
+
+        state.undoCount++;
+        document.getElementById('undo-count').textContent = state.undoCount;
+
+        showToast(`Catastrophic failure simulated on LAB-UPS-01 (${data.blastRadiusCount} dependents halted)`, 'danger');
+
+        // Trigger visual wave animation on canvas
+        triggerBlastWave('LAB-UPS-01', data.affectedDependents || []);
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    });
+  }
+
+  // Range Query Filter
+  const btnQueryCalib = document.getElementById('btn-query-calib');
+  if (btnQueryCalib) btnQueryCalib.addEventListener('click', loadCalibrations);
+
+  const btnAllCalib = document.getElementById('btn-all-calib');
+  if (btnAllCalib) {
+    btnAllCalib.addEventListener('click', () => {
+      document.getElementById('calib-start-range').value = 0;
+      document.getElementById('calib-end-range').value = 999;
+      loadCalibrations();
+    });
+  }
+
+  // Export CSV
+  const btnExportCsv = document.getElementById('btn-export-csv');
+  if (btnExportCsv) {
+    btnExportCsv.addEventListener('click', () => {
+      let type = 'faulty';
+      if (state.activeSubtab === 'report-sources') type = 'sources';
+      else if (state.activeSubtab === 'report-suppliers') type = 'suppliers';
+      window.location.href = `/api/reports/export-csv?type=${type}`;
+    });
+  }
+
+  const btnExportCalibCsv = document.getElementById('btn-export-calib-csv');
+  if (btnExportCalibCsv) {
+    btnExportCalibCsv.addEventListener('click', () => {
+      window.location.href = '/api/reports/export-csv?type=calibrations';
+    });
+  }
 
   // =========================================================================
-  // INTERACTIVE GRAPH CANVAS VISUALIZATION (Graph BFS & Blast Radius)
+  // MAINTENANCE SAFETY ADVISOR (WHAT-IF)
   // =========================================================================
-  async function loadGraphData() {
-    try {
-      const res = await fetch('/api/graph');
-      if (!res.ok) return;
-      const data = await res.json();
+  const formSafetyCheck = document.getElementById('form-safety-check');
+  if (formSafetyCheck) {
+    formSafetyCheck.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const targetAsset = document.getElementById('select-safety-asset').value;
+      const box = document.getElementById('safety-verdict-box');
+      if (!box) return;
 
-      graphNodes = data.nodes || [];
-      graphEdges = data.edges || [];
+      box.innerHTML = 'Evaluating dependency graph and active triage conflicts...';
 
-      // Calculate node positions
-      layoutGraphNodes();
-      drawGraph();
+      try {
+        const res = await fetch(`/api/what-if/service?asset=${targetAsset}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Safety check failed');
 
-      // Trigger initial blast inspection for current active input
-      inspectBlastRadius(blastInput.value.trim() || 'LAB-UPS-01');
-    } catch (err) {
-      console.error('Error loading graph topology:', err);
+        const isSafe = data.isSafe;
+        box.className = `safety-box ${isSafe ? 'safe' : 'danger'}`;
+
+        let affectedListHtml = '';
+        if (data.affectedAssets && data.affectedAssets.length > 0) {
+          affectedListHtml = `
+            <div style="margin-top: 0.5rem;">
+              <strong>Downstream Instruments Affected (${data.dependentCount}):</strong>
+              <ul style="margin: 0.35rem 0 0 1.25rem;">
+                ${data.affectedAssets.map(a => `<li><code>${a.code}</code> — ${a.name}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        let conflictHtml = '';
+        if (data.activeConflicts > 0) {
+          conflictHtml = `
+            <div style="margin-top: 0.5rem; color: #fca5a5;">
+              <strong>Triage Conflicts Detected:</strong> ${data.conflictSummary}
+            </div>
+          `;
+        }
+
+        box.innerHTML = `
+          <div style="font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem;">
+            Verdict: ${data.verdict}
+          </div>
+          <div>${data.guidance}</div>
+          ${affectedListHtml}
+          ${conflictHtml}
+        `;
+      } catch (err) {
+        box.className = 'safety-box danger';
+        box.textContent = err.message;
+      }
+    });
+  }
+
+  // =========================================================================
+  // OFFICIAL EXECUTIVE PDF CERTIFICATE BUILDER
+  // =========================================================================
+  function populateExecutivePdfCertificate() {
+    const certDate = document.getElementById('cert-date');
+    if (certDate) certDate.textContent = new Date().toLocaleString();
+
+    document.getElementById('cert-total-assets').textContent = state.assets.length;
+    document.getElementById('cert-active-emergencies').textContent = state.triageTasks.length;
+    document.getElementById('cert-spof-count').textContent = document.getElementById('val-spof-count').textContent;
+    document.getElementById('cert-calib-due').textContent = document.getElementById('val-calib-count').textContent;
+
+    // Supplier table
+    const suppTbody = document.getElementById('cert-suppliers-table');
+    if (suppTbody) {
+      if (state.suppliersReport && state.suppliersReport.length > 0) {
+        suppTbody.innerHTML = state.suppliersReport.map(s => `
+          <tr>
+            <td><strong>${s.supplierName}</strong></td>
+            <td>${s.assetCount}</td>
+            <td>${s.totalFaults}</td>
+            <td>${s.totalDowntime.toFixed(1)}</td>
+            <td><strong>${s.score.toFixed(1)}/100</strong></td>
+            <td>${s.tier}</td>
+            <td>${s.recommendation}</td>
+          </tr>
+        `).join('');
+      } else {
+        suppTbody.innerHTML = '<tr><td colspan="7">No supplier records available.</td></tr>';
+      }
+    }
+
+    // High-downtime table
+    const faultyTbody = document.getElementById('cert-faulty-table');
+    if (faultyTbody) {
+      if (state.faultyReport && state.faultyReport.length > 0) {
+        faultyTbody.innerHTML = state.faultyReport.slice(0, 5).map(f => `
+          <tr>
+            <td><code>${f.assetCode}</code></td>
+            <td><strong>${f.name}</strong></td>
+            <td>${f.supplier || 'Standard Lab Corp'}</td>
+            <td>${f.totalFaultCount}</td>
+            <td>${f.totalDowntimeHours.toFixed(1)}h</td>
+            <td>${f.blastRadiusCount} machines</td>
+          </tr>
+        `).join('');
+      } else {
+        faultyTbody.innerHTML = '<tr><td colspan="6">All equipment fully nominal.</td></tr>';
+      }
+    }
+
+    // Calib table
+    const calibTbody = document.getElementById('cert-calib-table');
+    if (calibTbody) {
+      const urgentCalib = (state.calibrations || []).filter(c => c.dueDate <= 30);
+      if (urgentCalib.length > 0) {
+        calibTbody.innerHTML = urgentCalib.map(c => `
+          <tr>
+            <td><strong>${c.dueDate} days</strong></td>
+            <td><code>${c.assetCode}</code></td>
+            <td><strong>${c.assetName}</strong></td>
+            <td>${c.location || '-'}</td>
+          </tr>
+        `).join('');
+      } else {
+        calibTbody.innerHTML = '<tr><td colspan="4">No calibrations due within the 30-day compliance window.</td></tr>';
+      }
     }
   }
 
-  function layoutGraphNodes() {
-    if (graphNodes.length === 0) return;
+  // =========================================================================
+  // INTERACTIVE GRAPH CANVAS & BFS BLAST WAVE
+  // =========================================================================
+  const canvas = document.getElementById('graph-canvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+  const nodePositions = {};
+
+  function setupNodeCoordinates() {
+    const nodes = state.graphData.nodes || [];
+    if (nodes.length === 0 || !canvas) return;
 
     const width = canvas.width;
     const height = canvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
 
-    const inDegrees = {};
-    const outDegrees = {};
-    graphNodes.forEach(n => { inDegrees[n.id] = 0; outDegrees[n.id] = 0; });
-    graphEdges.forEach(e => {
-      inDegrees[e.to] = (inDegrees[e.to] || 0) + 1;
-      outDegrees[e.from] = (outDegrees[e.from] || 0) + 1;
-    });
-
-    const roots = graphNodes.filter(n => inDegrees[n.id] === 0);
-    const intermediates = graphNodes.filter(n => inDegrees[n.id] > 0 && outDegrees[n.id] > 0);
-    const terminals = graphNodes.filter(n => outDegrees[n.id] === 0);
-
-    const assignCol = (arr, colX) => {
-      const step = height / (arr.length + 1);
-      arr.forEach((node, i) => {
-        node.x = colX;
-        node.y = step * (i + 1);
-        node.radius = node.blastRadius >= 4 ? 26 : (node.blastRadius >= 1 ? 22 : 18);
-      });
+    const predefined = {
+      'LAB-UPS-01': { x: 160, y: height / 2, role: 'source' },
+      'LAB-NET-SW': { x: 420, y: height / 2 - 80, role: 'hub' },
+      'LAB-COOL-01': { x: 420, y: height / 2 + 80, role: 'hub' },
+      'LAB-PC-017': { x: 740, y: height / 2 - 130, role: 'leaf' },
+      'LAB-SPEC-003': { x: 740, y: height / 2 - 30, role: 'leaf' },
+      'LAB-LASER-01': { x: 740, y: height / 2 + 80, role: 'leaf' },
+      'LAB-CENT-009': { x: 960, y: height / 2, role: 'leaf' }
     };
 
-    if (roots.length + intermediates.length + terminals.length === graphNodes.length) {
-      assignCol(roots, width * 0.18);
-      assignCol(intermediates, width * 0.50);
-      assignCol(terminals, width * 0.82);
-    } else {
-      const radius = Math.min(width, height) * 0.38;
-      const angleStep = (2 * Math.PI) / graphNodes.length;
-      graphNodes.forEach((node, i) => {
-        node.x = centerX + radius * Math.cos(i * angleStep);
-        node.y = centerY + radius * Math.sin(i * angleStep);
-        node.radius = 20;
-      });
-    }
+    nodes.forEach((node, idx) => {
+      if (predefined[node.id]) {
+        nodePositions[node.id] = {
+          ...node,
+          x: predefined[node.id].x,
+          y: predefined[node.id].y,
+          radius: predefined[node.id].role === 'source' ? 24 : 18
+        };
+      } else {
+        const angle = (idx / nodes.length) * 2 * Math.PI;
+        nodePositions[node.id] = {
+          ...node,
+          x: width / 2 + Math.cos(angle) * (width * 0.35),
+          y: height / 2 + Math.sin(angle) * (height * 0.35),
+          radius: 18
+        };
+      }
+    });
   }
 
-  function drawGraph() {
+  function drawTopologyGraph(animProgress = 0) {
+    if (!ctx || !canvas) return;
+    setupNodeCoordinates();
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const edges = state.graphData.edges || [];
+    const sources = (state.graphData.sources || []).map(s => s.assetCode);
+
     // 1. Draw directed edges
-    graphEdges.forEach(edge => {
-      const fromNode = graphNodes.find(n => n.id === edge.from);
-      const toNode = graphNodes.find(n => n.id === edge.to);
+    edges.forEach(edge => {
+      const fromNode = nodePositions[edge.from];
+      const toNode = nodePositions[edge.to];
       if (!fromNode || !toNode) return;
 
-      const isAffectedEdge = (activeFailedNode === fromNode.id && activeAffectedNodes.includes(toNode.id))
-                          || (activeAffectedNodes.includes(fromNode.id) && activeAffectedNodes.includes(toNode.id));
+      const isAffectedEdge = (state.selectedGraphNode === edge.from || state.animatingNodes.has(edge.from)) &&
+                             (state.animatingNodes.has(edge.to));
 
       ctx.beginPath();
       ctx.moveTo(fromNode.x, fromNode.y);
       ctx.lineTo(toNode.x, toNode.y);
-      ctx.strokeStyle = isAffectedEdge ? '#ef4444' : '#253553';
+      ctx.strokeStyle = isAffectedEdge ? '#ef4444' : '#202e47';
       ctx.lineWidth = isAffectedEdge ? 3 : 1.5;
       if (isAffectedEdge) {
         ctx.setLineDash([6, 4]);
-      } else {
-        ctx.setLineDash([]);
       }
       ctx.stroke();
       ctx.setLineDash([]);
@@ -428,15 +912,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 2. Draw nodes
-    graphNodes.forEach(node => {
-      const isFailed = (node.id === activeFailedNode);
-      const isAffected = activeAffectedNodes.includes(node.id);
-      const isSource = (node.blastRadius >= 4);
+    Object.values(nodePositions).forEach(node => {
+      const isSelected = state.selectedGraphNode === node.id;
+      const isFailed = isSelected && state.animatingNodes.size > 0;
+      const isAffected = state.animatingNodes.has(node.id) && !isSelected;
+      const isSource = sources.includes(node.id);
 
       if (isFailed || isAffected) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius + 8 + Math.sin(animProgress) * 4, 0, 2 * Math.PI);
-        ctx.fillStyle = isFailed ? 'rgba(239, 68, 68, 0.22)' : 'rgba(245, 158, 11, 0.18)';
+        ctx.fillStyle = isFailed ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.2)';
         ctx.fill();
       }
 
@@ -454,280 +939,315 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       ctx.fill();
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = isFailed ? 3 : 1.5;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#fff';
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(node.id, node.x, node.y);
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '9px sans-serif';
+      ctx.font = '10px sans-serif';
       ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 12);
     });
   }
 
-  function drawArrowHead(fromX, fromY, toX, toY, targetRadius, color) {
+  function drawArrowHead(fromX, fromY, toX, toY, radius, color) {
     const angle = Math.atan2(toY - fromY, toX - fromX);
-    const arrowX = toX - targetRadius * Math.cos(angle);
-    const arrowY = toY - targetRadius * Math.sin(angle);
-    const headLen = 8;
+    const endX = toX - Math.cos(angle) * (radius + 2);
+    const endY = toY - Math.sin(angle) * (radius + 2);
 
     ctx.beginPath();
-    ctx.moveTo(arrowX, arrowY);
-    ctx.lineTo(arrowX - headLen * Math.cos(angle - Math.PI / 6), arrowY - headLen * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(arrowX - headLen * Math.cos(angle + Math.PI / 6), arrowY - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(endX - 9 * Math.cos(angle - Math.PI / 6), endY - 9 * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(endX - 9 * Math.cos(angle + Math.PI / 6), endY - 9 * Math.sin(angle + Math.PI / 6));
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
   }
 
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
-
-    for (const node of graphNodes) {
-      const dist = Math.hypot(clickX - node.x, clickY - node.y);
-      if (dist <= node.radius + 6) {
-        blastInput.value = node.id;
-        inspectBlastRadius(node.id);
-        break;
-      }
-    }
-  });
-
-  function animate() {
-    animProgress += 0.05;
-    if (activeFailedNode) {
-      drawGraph();
-    }
-    requestAnimationFrame(animate);
+  function truncate(str, maxLen) {
+    if (!str) return '';
+    return str.length > maxLen ? str.slice(0, maxLen - 1) + '...' : str;
   }
-  requestAnimationFrame(animate);
 
-  btnInspectBlast.addEventListener('click', () => {
-    const code = blastInput.value.trim() || 'LAB-UPS-01';
-    inspectBlastRadius(code);
-  });
+  // Click on canvas to inspect blast radius
+  if (canvas) {
+    canvas.addEventListener('click', async (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
-  btnRefreshGraph.addEventListener('click', () => {
-    loadGraphData();
-    showToast('Topology reloaded.', 'info');
-  });
+      let clickedNode = null;
+      for (const [id, pos] of Object.entries(nodePositions)) {
+        const dist = Math.hypot(pos.x - x, pos.y - y);
+        if (dist <= pos.radius + 4) {
+          clickedNode = id;
+          break;
+        }
+      }
 
-  async function inspectBlastRadius(assetCode) {
-    activeFailedNode = assetCode;
+      if (clickedNode) {
+        state.selectedGraphNode = clickedNode;
+        await simulateNodeBlast(clickedNode);
+      }
+    });
+  }
+
+  async function simulateNodeBlast(assetCode) {
+    const resultBox = document.getElementById('blast-simulation-result');
+    if (resultBox) resultBox.textContent = `Running BFS blast-radius calculation for ${assetCode}...`;
+
     try {
-      const res = await fetch(`/api/blast-radius-demo?asset=${encodeURIComponent(assetCode)}`);
+      const res = await fetch(`/api/blast-radius-demo?asset=${assetCode}`);
       const data = await res.json();
-      if (res.ok) {
-        activeAffectedNodes = data.bfsAffected || [];
-        renderBlastDetails(data.sourceAsset, data.bfsAffected);
-        drawGraph();
+      if (!res.ok) throw new Error('Failed to run blast simulation');
+
+      triggerBlastWave(assetCode, data.bfsAffected || []);
+
+      if (resultBox) {
+        resultBox.innerHTML = `
+Source Equipment: <strong>${data.sourceAsset}</strong>
+Breadth-First Search (BFS) Blast Radius: <strong>${data.bfsCount} downstream machines affected</strong>
+Transitive Impact Path:
+  ${(data.bfsAffected && data.bfsAffected.length > 0) ? data.bfsAffected.map(a => `-> [HALT] ${a}`).join('\n  ') : '(No downstream dependent instruments)'}
+        `;
       }
     } catch (err) {
-      console.error('Error querying blast radius:', err);
+      if (resultBox) resultBox.textContent = err.message;
     }
   }
 
-  function renderBlastDetails(source, affected) {
-    let text = `[GRAPH BFS FAILURE BLAST-RADIUS]\nSource Node: [${source}]\nCascaded Affected Equipment: ${affected.length} machines\n`;
-    if (affected.length === 0) {
-      text += `Impact: Localized terminal equipment (Zero downstream cascading).\n`;
+  function triggerBlastWave(sourceId, affectedIds) {
+    state.selectedGraphNode = sourceId;
+    state.animatingNodes = new Set(affectedIds);
+
+    let progress = 0;
+    if (state.animationTimer) clearInterval(state.animationTimer);
+
+    state.animationTimer = setInterval(() => {
+      progress += 0.2;
+      drawTopologyGraph(progress);
+      if (progress > 12) {
+        clearInterval(state.animationTimer);
+        state.animationTimer = null;
+      }
+    }, 50);
+  }
+
+  const btnRefreshGraph = document.getElementById('btn-refresh-graph');
+  if (btnRefreshGraph) {
+    btnRefreshGraph.addEventListener('click', () => {
+      state.selectedGraphNode = null;
+      state.animatingNodes.clear();
+      drawTopologyGraph();
+      const box = document.getElementById('blast-simulation-result');
+      if (box) box.textContent = 'Select an equipment node above to calculate its transitive blast radius.';
+    });
+  }
+
+  // =========================================================================
+  // EMBEDDED LAB AI COPILOT (OFFLINE, LOCAL ENGINE ANALYTICS)
+  // =========================================================================
+  const chatbotWindow = document.getElementById('chatbot-window');
+  const btnToggleChatbot = document.getElementById('btn-toggle-chatbot');
+  const btnCloseChatbot = document.getElementById('btn-close-chatbot');
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInputForm = document.getElementById('chat-input-form');
+  const chatInputText = document.getElementById('chat-input-text');
+
+  if (btnToggleChatbot && chatbotWindow) {
+    btnToggleChatbot.addEventListener('click', () => {
+      const isVisible = chatbotWindow.style.display !== 'none';
+      chatbotWindow.style.display = isVisible ? 'none' : 'flex';
+    });
+  }
+
+  if (btnCloseChatbot && chatbotWindow) {
+    btnCloseChatbot.addEventListener('click', () => {
+      chatbotWindow.style.display = 'none';
+    });
+  }
+
+  // Chat message appender
+  function appendChatMessage(text, sender = 'bot', isCode = false) {
+    if (!chatMessages) return;
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${sender}`;
+
+    if (isCode) {
+      bubble.innerHTML = `<pre>${text}</pre>`;
     } else {
-      text += `Downstream Affected Equipment Nodes:\n`;
-      affected.forEach((n, i) => {
-        text += `  ${i + 1}. [${n}]\n`;
-      });
-      text += `\nPrioritization Impact: Live Risk Score boosted by (1.0 + 0.20 * ${affected.length}) = ${(1.0 + 0.20 * affected.length).toFixed(2)}x`;
+      bubble.innerHTML = text.replace(/\n/g, '<br>');
     }
-    blastDetailsBox.textContent = text;
+
+    chatMessages.appendChild(bubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  function renderSpofList(sources) {
-    if (!sources || sources.length === 0) return;
-    spofSummaryList.innerHTML = sources.slice(0, 4).map(s => `
-      <div class="spof-row ${s.totalBlastRadius >= 4 ? 'critical' : ''}">
-        <div>
-          <strong>[${escapeHtml(s.assetCode)}]</strong> ${escapeHtml(s.name)}
-          <div style="font-size: 0.74rem; color: #94a3b8;">Direct: ${s.outDegree} | Total Impact: ${s.totalBlastRadius} machines</div>
-        </div>
-        <span class="badge ${s.totalBlastRadius >= 4 ? 'badge-spof' : (s.totalBlastRadius >= 2 ? 'badge-high' : 'badge-terminal')}">
-          ${escapeHtml(s.criticality)}
-        </span>
-      </div>
-    `).join('');
-  }
-
-  // =========================================================================
-  // AUDIT & REPORTS TAB DATA LOADERS
-  // =========================================================================
-  async function loadReportsData() {
-    loadFaultyReport();
-    loadSourcesReport();
-  }
-
-  async function loadFaultyReport() {
-    const sortBy = selectFaultySort.value;
-    try {
-      const res = await fetch(`/api/reports/faulty?sort=${sortBy}`);
-      const data = await res.json();
-      if (!res.ok || data.length === 0) {
-        faultyReportBody.innerHTML = `<tr><td colspan="9" class="empty-state">No equipment currently flagged with faults.</td></tr>`;
-        return;
+  // Quick Action Chips in Chat
+  document.querySelectorAll('.chat-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const query = chip.getAttribute('data-query');
+      if (query) {
+        processChatQuery(query);
       }
+    });
+  });
 
-      faultyReportBody.innerHTML = data.map((item, idx) => `
-        <tr>
-          <td>#${idx + 1}</td>
-          <td><strong>${escapeHtml(item.assetCode)}</strong></td>
-          <td>${escapeHtml(item.name)}</td>
-          <td>${escapeHtml(item.location || '-')}</td>
-          <td>${item.totalFaultCount}</td>
-          <td><strong>${Number(item.totalDowntimeHours).toFixed(1)}h</strong></td>
-          <td>${Number(item.latestDriftVelocity).toFixed(4)}/s</td>
-          <td>
-            ${item.blastRadiusCount > 0 
-              ? `<span class="badge badge-high">${item.blastRadiusCount} affected</span>` 
-              : `<span class="badge badge-terminal">0</span>`}
-          </td>
-          <td>${item.nextCalibrationDue}d</td>
-        </tr>
-      `).join('');
-    } catch (err) {
-      console.error('Error loading faulty report:', err);
-    }
+  if (chatInputForm) {
+    chatInputForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const query = chatInputText.value.trim();
+      if (!query) return;
+      chatInputText.value = '';
+      processChatQuery(query);
+    });
   }
 
-  async function loadSourcesReport() {
-    try {
-      const res = await fetch('/api/reports/sources');
-      const data = await res.json();
-      if (!res.ok || data.length === 0) {
-        sourcesReportBody.innerHTML = `<tr><td colspan="7" class="empty-state">No source equipment identified.</td></tr>`;
-        return;
+  async function processChatQuery(query) {
+    appendChatMessage(query, 'user');
+    const q = query.toLowerCase();
+
+    // 1. Worst suppliers / Bad suppliers
+    if (q.includes('supplier') || q.includes('lemon') || q.includes('vendor') || q.includes('worst')) {
+      try {
+        const res = await fetch('/api/reports/suppliers');
+        const suppliers = await res.json();
+        const lemon = suppliers.find(s => s.isLemon);
+
+        let reply = `Supplier Quality Analysis (via Lemon Scorecard):\n`;
+        suppliers.forEach(s => {
+          reply += `• ${s.supplierName}: Score ${s.score.toFixed(1)}/100 (${s.tier})\n  Faults: ${s.totalFaults}, Drift: ${s.avgDrift.toFixed(3)} mm/s\n`;
+        });
+
+        if (lemon) {
+          reply += `\nDEFECTIVE VENDOR ALERT: "${lemon.supplierName}" has a reliability score of only ${lemon.score.toFixed(1)}/100 with ${lemon.totalFaults} logged faults.\nRecommendation: File an immediate warranty claim and pause procurement.`;
+        }
+        appendChatMessage(reply, 'bot');
+      } catch (err) {
+        appendChatMessage('Failed to retrieve supplier reliability data.', 'bot');
       }
-
-      sourcesReportBody.innerHTML = data.map(item => `
-        <tr>
-          <td><strong>${escapeHtml(item.assetCode)}</strong></td>
-          <td>${escapeHtml(item.name)}</td>
-          <td>${escapeHtml(item.location || '-')}</td>
-          <td>${item.outDegree}</td>
-          <td>${item.inDegree}</td>
-          <td><span class="badge ${item.totalBlastRadius >= 4 ? 'badge-spof' : 'badge-high'}">${item.totalBlastRadius} machines</span></td>
-          <td>
-            <span class="badge ${item.totalBlastRadius >= 4 ? 'badge-spof' : (item.totalBlastRadius >= 2 ? 'badge-high' : 'badge-terminal')}">
-              ${escapeHtml(item.criticality)}
-            </span>
-          </td>
-        </tr>
-      `).join('');
-    } catch (err) {
-      console.error('Error loading sources report:', err);
-    }
-  }
-
-  function renderInventoryTable(assets) {
-    if (!assets || assets.length === 0) {
-      inventoryReportBody.innerHTML = `<tr><td colspan="6" class="empty-state">No equipment registered in Hash Table.</td></tr>`;
       return;
     }
 
-    inventoryReportBody.innerHTML = assets.map(a => `
-      <tr>
-        <td><strong>${escapeHtml(a.assetCode)}</strong></td>
-        <td>${escapeHtml(a.name)}</td>
-        <td>${escapeHtml(a.location || '-')}</td>
-        <td>${a.nextCalibrationDue}d</td>
-        <td>${a.totalFaultCount}</td>
-        <td>${a.totalDowntimeHours}h</td>
-      </tr>
-    `).join('');
-  }
+    // 2. Predict next failure / Next expected fault / RUL
+    if (q.includes('next') || q.includes('predict') || q.includes('expect') || q.includes('rul') || q.includes('fail')) {
+      try {
+        const res = await fetch('/api/reports/faulty?sort=downtime');
+        const list = await res.json();
+        const critical = list.find(item => item.failureUrgency === 'CRITICAL IMMINENT') || list[0];
 
-  btnRefreshFaulty.addEventListener('click', () => {
-    loadFaultyReport();
-    showToast('Faulty equipment table re-sorted.', 'info');
-  });
+        if (critical) {
+          const dev = critical.latestDeviation || 0.0;
+          const drift = critical.latestDriftVelocity || 0.0;
+          const margin = critical.remainingMargin || 0.0;
+          const ettf = critical.ettfDays || 1.0;
 
-  // CSV Export Handler
-  btnExportCsv.addEventListener('click', () => {
-    const activeSubtab = document.querySelector('.subtab-btn.active').dataset.subtab;
-    let type = 'faulty';
-    if (activeSubtab === 'report-sources') type = 'sources';
-    window.location.href = `/api/reports/export-csv?type=${type}`;
-    showToast(`Downloading ${type} report CSV...`, 'info');
-  });
-
-  // =========================================================================
-  // AVL CALIBRATION SCHEDULE TAB
-  // =========================================================================
-  async function loadCalibrationSchedule(start = 0, end = 9999999999) {
-    try {
-      const res = await fetch(`/api/reports/calibrations?start=${start}&end=${end}`);
-      const data = await res.json();
-      if (!res.ok || data.length === 0) {
-        calibScheduleBody.innerHTML = `<tr><td colspan="5" class="empty-state">No calibration records in selected range.</td></tr>`;
-        return;
-      }
-
-      calibScheduleBody.innerHTML = data.map(item => {
-        let statusBadge = `<span class="badge badge-compliant">COMPLIANT</span>`;
-        if (item.dueDate <= 0) {
-          statusBadge = `<span class="badge badge-overdue">OVERDUE</span>`;
-        } else if (item.dueDate <= 30) {
-          statusBadge = `<span class="badge badge-due-soon">DUE SOON (${item.dueDate}d)</span>`;
+          let reply = `Predictive RUL Failure Forecast:\n` +
+            `Asset: ${critical.name} (${critical.assetCode})\n` +
+            `Current Deviation: ${dev.toFixed(2)} mm (Tolerance: 5.0 mm)\n` +
+            `Drift Velocity: ${drift >= 0 ? '+' : ''}${drift.toFixed(3)} mm/s\n` +
+            `Safe Margin Remaining: ${margin.toFixed(2)} mm\n` +
+            `Estimated Time to Critical Failure: ${ettf <= 3.0 ? 'IMMINENT (< 3 days)' : ettf.toFixed(1) + ' days'}\n\n` +
+            `Trend Progression:\n` +
+            `[Baseline 0.0mm] ───> [Dev ${dev.toFixed(2)}mm] ───> [BREACH 5.0mm]`;
+          appendChatMessage(reply, 'bot', true);
+        } else {
+          appendChatMessage('All laboratory equipment is operating within nominal safe margins.', 'bot');
         }
-
-        return `
-          <tr>
-            <td><strong>${item.dueDate} days</strong></td>
-            <td><code>${escapeHtml(item.assetCode)}</code></td>
-            <td>${escapeHtml(item.assetName)}</td>
-            <td>${escapeHtml(item.location || '-')}</td>
-            <td>${statusBadge}</td>
-          </tr>
-        `;
-      }).join('');
-    } catch (err) {
-      console.error('Error loading calibration schedule:', err);
+      } catch (err) {
+        appendChatMessage('Unable to compute predictive failure forecast.', 'bot');
+      }
+      return;
     }
+
+    // 3. Most faults / Highest downtime
+    if (q.includes('most fault') || q.includes('downtime') || q.includes('who has')) {
+      try {
+        const res = await fetch('/api/reports/faulty?sort=faults');
+        const list = await res.json();
+        if (list.length > 0) {
+          const top = list[0];
+          let reply = `Fault Frequency Leader (via custom Merge Sort):\n` +
+            `Equipment: ${top.name} (${top.assetCode})\n` +
+            `Total Logged Faults: ${top.totalFaultCount}\n` +
+            `Accumulated Downtime: ${top.totalDowntimeHours} hours\n` +
+            `Supplier: ${top.supplier || 'Standard Lab Corp'}\n` +
+            `Blast Radius: ${top.blastRadiusCount} machines`;
+          appendChatMessage(reply, 'bot');
+        } else {
+          appendChatMessage('No faulty equipment records on file.', 'bot');
+        }
+      } catch (err) {
+        appendChatMessage('Failed to fetch downtime audit.', 'bot');
+      }
+      return;
+    }
+
+    // 4. Safe to service / What-if maintenance
+    if (q.includes('service') || q.includes('safe') || q.includes('chiller') || q.includes('cool')) {
+      try {
+        const target = q.includes('ups') ? 'LAB-UPS-01' : 'LAB-COOL-01';
+        const res = await fetch(`/api/what-if/service?asset=${target}`);
+        const data = await res.json();
+        let reply = `Maintenance Window Evaluation for ${data.assetName} (${data.assetCode}):\n` +
+          `Verdict: ${data.verdict}\n` +
+          `Impact: Taking this offline halts ${data.dependentCount} downstream machines.\n` +
+          `Advice: ${data.guidance}`;
+        appendChatMessage(reply, 'bot');
+      } catch (err) {
+        appendChatMessage('Could not execute safety advisor query.', 'bot');
+      }
+      return;
+    }
+
+    // 5. Dispatch top job action
+    if (q.includes('dispatch') || q.includes('resolve')) {
+      try {
+        const res = await fetch('/api/dispatch', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Queue empty');
+
+        state.undoCount++;
+        document.getElementById('undo-count').textContent = state.undoCount;
+
+        let reply = `ACTION EXECUTED: Dispatched top urgency job ${data.dispatched.taskId} from Max-Heap root.\n` +
+          `Asset: ${data.dispatched.assetCode}\n` +
+          `Resolved Risk Score: ${data.dispatched.riskScore.toFixed(1)}\n` +
+          `Remaining jobs in heap: ${state.triageTasks.length - 1}`;
+        appendChatMessage(reply, 'bot');
+        await refreshAll();
+      } catch (err) {
+        appendChatMessage(`Dispatch Error: ${err.message}`, 'bot');
+      }
+      return;
+    }
+
+    // 6. Explain drift / latest repaired fault
+    if (q.includes('drift') || q.includes('latest') || q.includes('tell us') || q.includes('repair')) {
+      let reply = `Drift Velocity & Trend Explainability:\n` +
+        `• Measurement Drift is computed in the Doubly Linked List via linear interpolation: Delta(Dev) / Delta(Time).\n` +
+        `• A positive drift (+0.05 mm/s) indicates progressive mechanical wear or photodetector degradation.\n` +
+        `• A negative drift (-0.50 mm/s) indicates sudden rotor wobble or structural shock.\n` +
+        `• When recalibration is performed, deviation resets toward baseline, proving the effectiveness of the calibration cycle.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // Default Fallback
+    appendChatMessage(`I parsed your request regarding "${query}". You can query me about:\n• "Which suppliers are bad?" (Lemon Scorecard)\n• "Predict next failure" (RUL Forecast)\n• "Who has the most faults?" (Downtime Audit)\n• "Can I safely service LAB-COOL-01?" (Graph BFS Impact)\n• "Dispatch top job" (Max-Heap Action)`, 'bot');
   }
 
-  btnQueryCalib.addEventListener('click', () => {
-    const start = parseInt(document.getElementById('calib-start-range').value, 10) || 0;
-    const end = parseInt(document.getElementById('calib-end-range').value, 10) || 60;
-    loadCalibrationSchedule(start, end);
-    showToast(`Filtering calibrations between ${start} and ${end} days.`, 'info');
-  });
-
-  btnAllCalib.addEventListener('click', () => {
-    loadCalibrationSchedule(0, 9999999999);
-    showToast('Showing all calibration records.', 'info');
-  });
-
-  btnExportCalibCsv.addEventListener('click', () => {
-    window.location.href = `/api/reports/export-csv?type=calibrations`;
-    showToast('Downloading calibration schedule CSV...', 'info');
-  });
-
-  // Utilities
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  function truncate(str, max) {
-    if (!str) return '';
-    return str.length > max ? str.substring(0, max - 1) + '…' : str;
-  }
-
-  // Initial dashboard load
-  refreshDashboard();
-  loadGraphData();
+  // =========================================================================
+  // INITIALIZATION
+  // =========================================================================
+  refreshAll();
+  setInterval(() => {
+    // Background polling for live sync
+    loadTriageQueue();
+  }, 10000);
 });

@@ -88,6 +88,7 @@ public:
     std::string assetCode;          // Primary key (e.g. "LAB-PC-017")
     std::string name;               // e.g. "Centrifuge CF-200"
     std::string location;           // e.g. "Bio-Lab 3B"
+    std::string supplier;           // e.g. "ThermoFisher", "GenericLab OEM", "Agilent"
     long long nextCalibrationDue;   // Epoch timestamp used by AVL Tree
     int totalFaultCount;
     double totalDowntimeHours;
@@ -95,7 +96,7 @@ public:
 
     Asset();
     Asset(const std::string& code, const std::string& name, const std::string& loc, 
-          long long calibDue = 0, double downtime = 0.0);
+          long long calibDue = 0, double downtime = 0.0, const std::string& supp = "Standard Lab Corp");
     ~Asset();
 
     // Prevent shallow-copy memory errors on custom DLL

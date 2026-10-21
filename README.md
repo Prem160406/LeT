@@ -26,6 +26,27 @@ An academic Data Structures & Algorithms project (VIT Pune, Semester 3, Group 8,
 
 ---
 
+## Intelligence & Compliance Suite Features
+
+1. **DSA Architecture "Glass-Box" Mode**:
+   - Clean, professional dashboard by default; header toggle `[DSA Inspector: OFF/ON]` reveals scratch C++ containers and Big-O complexities on every widget.
+   - Includes interactive **DSA Specification & Viva Defense Sheet** detailing collision handling, heap percolation, AVL rotation cases, and memory bounds.
+2. **Supplier Reliability & "Lemon" Scorecard**:
+   - Evaluates vendor hardware quality: $\text{Score} = 100 - (15\times\text{AvgFaults} + 20\times\text{AvgDrift} + 2\times\text{AvgDowntime})$.
+   - Categorizes manufacturers into Tier A (Certified), Tier B (Watchlist), and Tier C (Defective "Lemon" with warranty claim guidance).
+3. **Predictive Failure Forecast (Remaining Useful Life - RUL)**:
+   - Uses live linear drift velocities $\Delta(\text{Dev})/\Delta(\text{Time})$ to calculate Estimated Time to Failure (ETTF) before an instrument breaches physical limits.
+4. **Maintenance Window Safety Advisor (What-If Outage Engine)**:
+   - Evaluates whether shutting down an asset for maintenance will disrupt downstream experiments via Graph BFS and Max-Heap conflict cross-checking.
+5. **Offline Local Lab AI Copilot**:
+   - Embedded floating assistant with one-click query chips; parses questions on fault history, worst suppliers, predictive drift trends, and executes live dispatches.
+6. **Official Executive PDF Compliance Certificate**:
+   - Print-formatted compliance audit certificate with official VIT Pune header, fleet health KPI bar, supplier scorecard, SPOFs, and formal sign-off blocks.
+7. **Form Input Guidance Micro-Copy**:
+   - Clear helper text beneath every input field explaining expected formats and algorithmic impact.
+
+---
+
 ## Live Pipeline Working Principle
 
 ```text

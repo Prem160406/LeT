@@ -85,6 +85,7 @@ void HttpServer::start() {
                << "\"assetCode\":\"" << assets[i]->assetCode << "\","
                << "\"name\":\"" << assets[i]->name << "\","
                << "\"location\":\"" << assets[i]->location << "\","
+               << "\"supplier\":\"" << assets[i]->supplier << "\","
                << "\"nextCalibrationDue\":" << assets[i]->nextCalibrationDue << ","
                << "\"totalFaultCount\":" << assets[i]->totalFaultCount << ","
                << "\"totalDowntimeHours\":" << assets[i]->totalDowntimeHours
@@ -101,6 +102,8 @@ void HttpServer::start() {
         std::string code = extractJsonString(req.body, "assetCode");
         std::string name = extractJsonString(req.body, "name");
         std::string loc = extractJsonString(req.body, "location");
+        std::string supp = extractJsonString(req.body, "supplier");
+        std::string dependsOn = extractJsonString(req.body, "dependsOn");
         long long calibDue = extractJsonLong(req.body, "nextCalibrationDue");
         double downtime = extractJsonDouble(req.body, "totalDowntimeHours");
 
@@ -110,10 +113,15 @@ void HttpServer::start() {
             return;
         }
 
-        Asset newAsset(code, name, loc, calibDue, downtime);
+        if (supp.empty()) supp = "Standard Lab Corp";
+
+        Asset newAsset(code, name, loc, calibDue, downtime, supp);
         bool success = engine.registerAsset(newAsset);
 
         if (success) {
+            if (!dependsOn.empty()) {
+                engine.getGraph().addEdge(dependsOn, code);
+            }
             res.set_content("{\"status\":\"success\",\"message\":\"Asset registered successfully\"}", "application/json");
         } else {
             res.status = 400;
@@ -369,19 +377,194 @@ void HttpServer::start() {
             }
             int blast = engine.getGraph().getBlastRadiusCount(faultyAssets[i]->assetCode);
 
+            double safeTolerance = 5.0; // Critical tolerance limit (mm/units)
+            double remainingMargin = std::max(0.0, safeTolerance - std::abs(latestDev));
+            double ettfDays = 999.0;
+            if (std::abs(latestDrift) > 0.0001) {
+                ettfDays = remainingMargin / std::abs(latestDrift);
+            }
+
+            std::string failureUrgency = "NOMINAL";
+            if (std::abs(latestDev) >= safeTolerance || ettfDays <= 3.0) {
+                failureUrgency = "CRITICAL IMMINENT";
+            } else if (ettfDays <= 14.0 || std::abs(latestDrift) >= 0.10) {
+                failureUrgency = "ACCELERATING DRIFT";
+            }
+
             ss << "{"
                << "\"assetCode\":\"" << faultyAssets[i]->assetCode << "\","
                << "\"name\":\"" << faultyAssets[i]->name << "\","
                << "\"location\":\"" << faultyAssets[i]->location << "\","
+               << "\"supplier\":\"" << faultyAssets[i]->supplier << "\","
                << "\"totalFaultCount\":" << faultyAssets[i]->totalFaultCount << ","
                << "\"totalDowntimeHours\":" << faultyAssets[i]->totalDowntimeHours << ","
                << "\"latestDeviation\":" << latestDev << ","
                << "\"latestDriftVelocity\":" << latestDrift << ","
                << "\"blastRadiusCount\":" << blast << ","
+               << "\"remainingMargin\":" << remainingMargin << ","
+               << "\"ettfDays\":" << ettfDays << ","
+               << "\"failureUrgency\":\"" << failureUrgency << "\","
                << "\"nextCalibrationDue\":" << faultyAssets[i]->nextCalibrationDue
                << "}";
         }
         ss << "]";
+
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/reports/suppliers — Supplier Reliability Scorecard & Lemon Index
+    // =========================================================================
+    server.Get("/api/reports/suppliers", [this](const httplib_single::Request&, httplib_single::Response& res) {
+        CustomArray<Asset*> allAssets;
+        engine.getAllAssets(allAssets);
+
+        struct SupplierMetrics {
+            std::string name;
+            int assetCount;
+            int totalFaults;
+            double totalDowntime;
+            double totalDrift;
+        };
+
+        CustomArray<SupplierMetrics> suppliers;
+
+        for (size_t i = 0; i < allAssets.size(); ++i) {
+            std::string sName = allAssets[i]->supplier.empty() ? "Standard Lab Corp" : allAssets[i]->supplier;
+            int foundIdx = -1;
+            for (size_t s = 0; s < suppliers.size(); ++s) {
+                if (suppliers[s].name == sName) {
+                    foundIdx = static_cast<int>(s);
+                    break;
+                }
+            }
+
+            double drift = 0.0;
+            const HistoryEntry* h = allAssets[i]->history->getLatestEntry();
+            if (h) drift = std::abs(h->computedDrift);
+
+            if (foundIdx >= 0) {
+                suppliers[foundIdx].assetCount++;
+                suppliers[foundIdx].totalFaults += allAssets[i]->totalFaultCount;
+                suppliers[foundIdx].totalDowntime += allAssets[i]->totalDowntimeHours;
+                suppliers[foundIdx].totalDrift += drift;
+            } else {
+                SupplierMetrics sm;
+                sm.name = sName;
+                sm.assetCount = 1;
+                sm.totalFaults = allAssets[i]->totalFaultCount;
+                sm.totalDowntime = allAssets[i]->totalDowntimeHours;
+                sm.totalDrift = drift;
+                suppliers.push_back(sm);
+            }
+        }
+
+        std::ostringstream ss;
+        ss << "[";
+        for (size_t i = 0; i < suppliers.size(); ++i) {
+            if (i > 0) ss << ",";
+            double avgFaults = static_cast<double>(suppliers[i].totalFaults) / suppliers[i].assetCount;
+            double avgDowntime = suppliers[i].totalDowntime / suppliers[i].assetCount;
+            double avgDrift = suppliers[i].totalDrift / suppliers[i].assetCount;
+
+            // Score = 100 - (15*AvgFaults + 20*AvgDrift + 2*AvgDowntime)
+            double penalty = (15.0 * avgFaults) + (20.0 * avgDrift) + (2.0 * avgDowntime);
+            double score = 100.0 - penalty;
+            if (score < 0.0) score = 0.0;
+            if (score > 100.0) score = 100.0;
+
+            std::string tier = "Tier A (Certified / High Reliability)";
+            std::string rec = "Certified manufacturer. Low drift and failure rate; approved for future procurement.";
+            bool isLemon = false;
+
+            if (score < 60.0 || avgFaults >= 1.5) {
+                tier = "Tier C (Defective / 'Lemon')";
+                rec = "CRITICAL: Excessive failure rate detected. Recommendation: File immediate warranty claim and pause procurement.";
+                isLemon = true;
+            } else if (score < 85.0) {
+                tier = "Tier B (Watchlist)";
+                rec = "MODERATE: Elevated drift velocity observed. Increase calibration inspection frequency.";
+            }
+
+            ss << "{"
+               << "\"supplierName\":\"" << suppliers[i].name << "\","
+               << "\"assetCount\":" << suppliers[i].assetCount << ","
+               << "\"totalFaults\":" << suppliers[i].totalFaults << ","
+               << "\"totalDowntime\":" << suppliers[i].totalDowntime << ","
+               << "\"avgDrift\":" << avgDrift << ","
+               << "\"score\":" << score << ","
+               << "\"tier\":\"" << tier << "\","
+               << "\"isLemon\":" << (isLemon ? "true" : "false") << ","
+               << "\"recommendation\":\"" << rec << "\""
+               << "}";
+        }
+        ss << "]";
+
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
+    // GET /api/what-if/service — Maintenance Window Safety Inspector
+    // =========================================================================
+    server.Get("/api/what-if/service", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        std::string target = req.get_param_value("asset");
+        if (target.empty()) target = "LAB-COOL-01";
+
+        Asset* targetAsset = engine.getAsset(target);
+        if (!targetAsset) {
+            res.status = 404;
+            res.set_content("{\"status\":\"error\",\"message\":\"Asset not found\"}", "application/json");
+            return;
+        }
+
+        CustomArray<std::string> affected;
+        engine.getGraph().bfs(target, affected);
+
+        CustomArray<TriageTask> triageTasks;
+        engine.getTriageTasksSnapshot(triageTasks);
+
+        std::ostringstream ss;
+        ss << "{"
+           << "\"assetCode\":\"" << target << "\","
+           << "\"assetName\":\"" << targetAsset->name << "\","
+           << "\"location\":\"" << targetAsset->location << "\","
+           << "\"dependentCount\":" << affected.size() << ","
+           << "\"affectedAssets\":[";
+        for (size_t i = 0; i < affected.size(); ++i) {
+            if (i > 0) ss << ",";
+            Asset* a = engine.getAsset(affected[i]);
+            std::string name = a ? a->name : affected[i];
+            ss << "{\"code\":\"" << affected[i] << "\",\"name\":\"" << name << "\"}";
+        }
+        ss << "],";
+
+        int activeConflicts = 0;
+        std::string conflictSummary = "";
+        for (size_t i = 0; i < triageTasks.size(); ++i) {
+            if (triageTasks[i].assetCode == target) {
+                activeConflicts++;
+                conflictSummary += "Target " + target + " has active triage ticket (" + triageTasks[i].taskId + "). ";
+            }
+            for (size_t j = 0; j < affected.size(); ++j) {
+                if (triageTasks[i].assetCode == affected[j]) {
+                    activeConflicts++;
+                    conflictSummary += "Dependent " + affected[j] + " has active triage ticket (" + triageTasks[i].taskId + "). ";
+                }
+            }
+        }
+
+        bool isSafe = (activeConflicts == 0 && affected.size() == 0);
+        std::string verdict = isSafe ? "SAFE FOR SERVICE" : "UNSAFE: SYSTEMIC DISRUPTION";
+        std::string guidance = isSafe ? 
+            "Zero downstream equipment will be affected. Safe to schedule shutdown for maintenance." :
+            "WARNING: Taking this asset offline halts " + std::to_string(affected.size()) + " downstream machines. Active conflicts: " + std::to_string(activeConflicts) + ".";
+
+        ss << "\"activeConflicts\":" << activeConflicts << ","
+           << "\"isSafe\":" << (isSafe ? "true" : "false") << ","
+           << "\"verdict\":\"" << verdict << "\","
+           << "\"conflictSummary\":\"" << conflictSummary << "\","
+           << "\"guidance\":\"" << guidance << "\""
+           << "}";
 
         res.set_content(ss.str(), "application/json");
     });
@@ -483,6 +666,76 @@ void HttpServer::start() {
                     << items[i].assetCode << "\",\""
                     << items[i].assetName << "\",\""
                     << loc << "\"\r\n";
+            }
+        } else if (type == "suppliers") {
+            csv << "Supplier Name,Asset Count,Total Faults,Total Downtime Hours,Average Drift Velocity,Reliability Score (0-100),Quality Tier,Warranty Action Recommendation\r\n";
+            CustomArray<Asset*> allAssets;
+            engine.getAllAssets(allAssets);
+
+            struct SupplierMetrics {
+                std::string name;
+                int assetCount;
+                int totalFaults;
+                double totalDowntime;
+                double totalDrift;
+            };
+
+            CustomArray<SupplierMetrics> suppliers;
+            for (size_t i = 0; i < allAssets.size(); ++i) {
+                std::string sName = allAssets[i]->supplier.empty() ? "Standard Lab Corp" : allAssets[i]->supplier;
+                int foundIdx = -1;
+                for (size_t s = 0; s < suppliers.size(); ++s) {
+                    if (suppliers[s].name == sName) {
+                        foundIdx = static_cast<int>(s);
+                        break;
+                    }
+                }
+                double drift = 0.0;
+                const HistoryEntry* h = allAssets[i]->history->getLatestEntry();
+                if (h) drift = std::abs(h->computedDrift);
+
+                if (foundIdx >= 0) {
+                    suppliers[foundIdx].assetCount++;
+                    suppliers[foundIdx].totalFaults += allAssets[i]->totalFaultCount;
+                    suppliers[foundIdx].totalDowntime += allAssets[i]->totalDowntimeHours;
+                    suppliers[foundIdx].totalDrift += drift;
+                } else {
+                    SupplierMetrics sm;
+                    sm.name = sName;
+                    sm.assetCount = 1;
+                    sm.totalFaults = allAssets[i]->totalFaultCount;
+                    sm.totalDowntime = allAssets[i]->totalDowntimeHours;
+                    sm.totalDrift = drift;
+                    suppliers.push_back(sm);
+                }
+            }
+
+            for (size_t i = 0; i < suppliers.size(); ++i) {
+                double avgFaults = static_cast<double>(suppliers[i].totalFaults) / suppliers[i].assetCount;
+                double avgDowntime = suppliers[i].totalDowntime / suppliers[i].assetCount;
+                double avgDrift = suppliers[i].totalDrift / suppliers[i].assetCount;
+                double score = 100.0 - (15.0 * avgFaults + 20.0 * avgDrift + 2.0 * avgDowntime);
+                if (score < 0.0) score = 0.0;
+                if (score > 100.0) score = 100.0;
+
+                std::string tier = "Tier A (Certified)";
+                std::string rec = "Certified";
+                if (score < 60.0 || avgFaults >= 1.5) {
+                    tier = "Tier C (Defective / Lemon)";
+                    rec = "File immediate warranty claim";
+                } else if (score < 85.0) {
+                    tier = "Tier B (Watchlist)";
+                    rec = "Monitor sensor drift";
+                }
+
+                csv << "\"" << suppliers[i].name << "\","
+                    << suppliers[i].assetCount << ","
+                    << suppliers[i].totalFaults << ","
+                    << suppliers[i].totalDowntime << ","
+                    << avgDrift << ","
+                    << score << ",\""
+                    << tier << "\",\""
+                    << rec << "\"\r\n";
             }
         } else {
             // Default: Faulty equipment report

@@ -33,14 +33,14 @@ TriageTask::TriageTask(const std::string& tId, const std::string& aCode, const s
       blastRadiusCount(blastCount), blastMultiplier(blastMult) {}
 
 Asset::Asset()
-    : assetCode(""), name(""), location(""), nextCalibrationDue(0),
+    : assetCode(""), name(""), location(""), supplier("Standard Lab Corp"), nextCalibrationDue(0),
       totalFaultCount(0), totalDowntimeHours(0.0) {
     history = new DoublyLinkedList();
 }
 
 Asset::Asset(const std::string& code, const std::string& n, const std::string& loc,
-             long long calibDue, double downtime)
-    : assetCode(code), name(n), location(loc), nextCalibrationDue(calibDue),
+             long long calibDue, double downtime, const std::string& supp)
+    : assetCode(code), name(n), location(loc), supplier(supp), nextCalibrationDue(calibDue),
       totalFaultCount(0), totalDowntimeHours(downtime) {
     history = new DoublyLinkedList();
 }
@@ -52,9 +52,13 @@ Asset::~Asset() {
 
 Asset::Asset(const Asset& other)
     : assetCode(other.assetCode), name(other.name), location(other.location),
-      nextCalibrationDue(other.nextCalibrationDue), totalFaultCount(other.totalFaultCount),
-      totalDowntimeHours(other.totalDowntimeHours) {
-    history = new DoublyLinkedList(*other.history);
+      supplier(other.supplier), nextCalibrationDue(other.nextCalibrationDue),
+      totalFaultCount(other.totalFaultCount), totalDowntimeHours(other.totalDowntimeHours) {
+    if (other.history != nullptr) {
+        history = new DoublyLinkedList(*other.history);
+    } else {
+        history = new DoublyLinkedList();
+    }
 }
 
 Asset& Asset::operator=(const Asset& other) {
@@ -62,20 +66,25 @@ Asset& Asset::operator=(const Asset& other) {
         assetCode = other.assetCode;
         name = other.name;
         location = other.location;
+        supplier = other.supplier;
         nextCalibrationDue = other.nextCalibrationDue;
         totalFaultCount = other.totalFaultCount;
         totalDowntimeHours = other.totalDowntimeHours;
         delete history;
-        history = new DoublyLinkedList(*other.history);
+        if (other.history != nullptr) {
+            history = new DoublyLinkedList(*other.history);
+        } else {
+            history = new DoublyLinkedList();
+        }
     }
     return *this;
 }
 
 Asset::Asset(Asset&& other) noexcept
     : assetCode(std::move(other.assetCode)), name(std::move(other.name)),
-      location(std::move(other.location)), nextCalibrationDue(other.nextCalibrationDue),
-      totalFaultCount(other.totalFaultCount), totalDowntimeHours(other.totalDowntimeHours),
-      history(other.history) {
+      location(std::move(other.location)), supplier(std::move(other.supplier)),
+      nextCalibrationDue(other.nextCalibrationDue), totalFaultCount(other.totalFaultCount),
+      totalDowntimeHours(other.totalDowntimeHours), history(other.history) {
     other.history = nullptr;
 }
 
@@ -84,6 +93,7 @@ Asset& Asset::operator=(Asset&& other) noexcept {
         assetCode = std::move(other.assetCode);
         name = std::move(other.name);
         location = std::move(other.location);
+        supplier = std::move(other.supplier);
         nextCalibrationDue = other.nextCalibrationDue;
         totalFaultCount = other.totalFaultCount;
         totalDowntimeHours = other.totalDowntimeHours;
@@ -96,6 +106,7 @@ Asset& Asset::operator=(Asset&& other) noexcept {
 
 void Asset::printSummary() const {
     std::cout << "[" << assetCode << "] " << name 
+              << " (" << supplier << ")"
               << " | Loc: " << location 
               << " | CalibDue: " << nextCalibrationDue 
               << " | Faults: " << totalFaultCount 

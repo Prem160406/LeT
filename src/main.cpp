@@ -458,13 +458,13 @@ void testReportGeneration() {
 // -----------------------------------------------------------------------------
 void populateSampleData(Engine& engine) {
     // Assets
-    Asset a1("LAB-UPS-01", "Main Lab UPS 10kVA", "Power Utility Room", 15, 2.5);
-    Asset a2("LAB-NET-SW", "Core Gigabit Switch", "Server Rack A", 60, 0.5);
-    Asset a3("LAB-PC-017", "Workstation Rig Alpha", "Room 304", 45, 12.0);
-    Asset a4("LAB-SPEC-003", "Spectrophotometer UV-Vis", "Room 305", 20, 24.5);
-    Asset a5("LAB-CENT-009", "Ultracentrifuge 30k RPM", "Room 308", 5, 48.0);
-    Asset a6("LAB-COOL-01", "Chilled Water Chiller", "Plant Room", 90, 8.0);
-    Asset a7("LAB-LASER-01", "Nd:YAG Pulse Laser", "Laser Bay 2", 10, 16.0);
+    Asset a1("LAB-UPS-01", "Main Lab UPS 10kVA", "Power Utility Room", 15, 2.5, "Schneider Electric / APC");
+    Asset a2("LAB-NET-SW", "Core Gigabit Switch", "Server Rack A", 60, 0.5, "Cisco Systems");
+    Asset a3("LAB-PC-017", "Workstation Rig Alpha", "Room 304", 45, 12.0, "Dell Precision");
+    Asset a4("LAB-SPEC-003", "Spectrophotometer UV-Vis", "Room 305", 20, 24.5, "ThermoFisher Scientific");
+    Asset a5("LAB-CENT-009", "Ultracentrifuge 30k RPM", "Room 308", 5, 48.0, "GenericLab OEM");
+    Asset a6("LAB-COOL-01", "Chilled Water Chiller", "Plant Room", 90, 8.0, "Carrier Industrial");
+    Asset a7("LAB-LASER-01", "Nd:YAG Pulse Laser", "Laser Bay 2", 10, 16.0, "Coherent Optics");
 
     engine.registerAsset(a1);
     engine.registerAsset(a2);
