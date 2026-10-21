@@ -148,6 +148,20 @@ mingw32-make
 
 ---
 
+## Group Work Division (5 Members)
+
+A dedicated breakdown with assigned files and viva defense topics is documented in [CONTRIBUTIONS.md](CONTRIBUTIONS.md):
+
+| Member | Primary Engineering Role | Core Data Structures & Modules Owned |
+|---|---|---|
+| **Member 1** | **Systems Architect & Ingestion Engine** | Circular Queue, Separate Chaining Hash Table, Custom Dynamic Array, Ingestion Pipeline |
+| **Member 2** | **Triage & Drift Analytics Engineer** | Doubly Linked List, Linear Drift Rate Engine, Binary Max-Heap Priority Queue |
+| **Member 3** | **Network Topology & Failure Propagation Engineer** | Directed Graph (Adjacency List), BFS/DFS Blast Radius, SPOF Analysis, Step 5 Multiplier |
+| **Member 4** | **Compliance, Scheduling & Integrity Engineer** | Self-Balancing AVL Tree (4 Rotations), Range Queries, Undo Stack, Merge Sort Sorter |
+| **Member 5** | **Transport, Intelligence & Dashboard Engineer** | WinSock2 REST Transport Layer, Interactive HTML5 Canvas, Lab AI Copilot, Supplier Lemon Index, PDF Audit |
+
+---
+
 ## Authors
 * **Institution:** Vishwakarma Institute of Technology (VIT), Pune
 * **Department:** Information Technology
