@@ -224,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (subtab === 'report-faulty') loadFaultyReport();
     else if (subtab === 'report-suppliers') loadSuppliersReport();
     else if (subtab === 'report-predictive') loadPredictiveReport();
+    else if (subtab === 'report-calib-subtab') loadCalibrations();
     else if (subtab === 'report-sources') renderSourcesTable();
     else if (subtab === 'report-all-assets') renderAllAssetsTable();
   }
@@ -883,7 +884,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ctx || !canvas) return;
     setupNodeCoordinates();
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const edges = state.graphData.edges || [];
     const sources = (state.graphData.sources || []).map(s => s.assetCode);
@@ -900,7 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.beginPath();
       ctx.moveTo(fromNode.x, fromNode.y);
       ctx.lineTo(toNode.x, toNode.y);
-      ctx.strokeStyle = isAffectedEdge ? '#ef4444' : '#202e47';
+      ctx.strokeStyle = isAffectedEdge ? '#dc2626' : '#cbd5e1';
       ctx.lineWidth = isAffectedEdge ? 3 : 1.5;
       if (isAffectedEdge) {
         ctx.setLineDash([6, 4]);
@@ -908,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#ef4444' : '#475569');
+      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#dc2626' : '#64748b');
     });
 
     // 2. Draw nodes
@@ -921,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isFailed || isAffected) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius + 8 + Math.sin(animProgress) * 4, 0, 2 * Math.PI);
-        ctx.fillStyle = isFailed ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.2)';
+        ctx.fillStyle = isFailed ? 'rgba(220, 38, 38, 0.18)' : 'rgba(217, 119, 6, 0.18)';
         ctx.fill();
       }
 
@@ -929,29 +931,29 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
 
       if (isFailed) {
-        ctx.fillStyle = '#ef4444';
+        ctx.fillStyle = '#dc2626';
       } else if (isAffected) {
-        ctx.fillStyle = '#f59e0b';
+        ctx.fillStyle = '#d97706';
       } else if (isSource) {
-        ctx.fillStyle = '#9333ea';
+        ctx.fillStyle = '#7c3aed';
       } else {
-        ctx.fillStyle = '#0284c7';
+        ctx.fillStyle = '#2563eb';
       }
       ctx.fill();
 
       ctx.lineWidth = 2;
-      ctx.strokeStyle = '#fff';
+      ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(node.id, node.x, node.y);
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 12);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '600 10px sans-serif';
+      ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 13);
     });
   }
 
