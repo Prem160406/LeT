@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Navigation Tabs
-  const navTabs = document.querySelectorAll('.nav-tab');
+  const navTabs = document.querySelectorAll('.tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
   navTabs.forEach(tab => {
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Core DOM Elements
+  // Core Elements
   const formAddAsset = document.getElementById('form-add-asset');
   const formSubmitReport = document.getElementById('form-submit-report');
   const btnRefreshTriage = document.getElementById('btn-refresh-triage');
@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnDispatch = document.getElementById('btn-dispatch');
   const btnSimulateRoot = document.getElementById('btn-simulate-root');
   const triageBody = document.getElementById('triage-body');
+
+  const btnFillDemoAsset = document.getElementById('btn-fill-demo-asset');
+  const btnFillDemoReport = document.getElementById('btn-fill-demo-report');
 
   const valAssetCount = document.getElementById('val-asset-count');
   const valTriageCount = document.getElementById('val-triage-count');
@@ -77,6 +80,50 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeFailedNode = 'LAB-UPS-01';
   let activeAffectedNodes = [];
   let animProgress = 0;
+
+  // =========================================================================
+  // NOTIFICATION TOAST SYSTEM (Replaces disruptive alerts)
+  // =========================================================================
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.3s ease';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  // =========================================================================
+  // DEMO FILL HELPERS (Easy to use)
+  // =========================================================================
+  if (btnFillDemoAsset) {
+    btnFillDemoAsset.addEventListener('click', () => {
+      document.getElementById('asset-code').value = 'LAB-OSC-011';
+      document.getElementById('asset-name').value = 'Digital Storage Oscilloscope 100MHz';
+      document.getElementById('asset-loc').value = 'Room 302, Signal Processing';
+      document.getElementById('asset-calib').value = '25';
+      document.getElementById('asset-downtime').value = '2.0';
+      showToast('Sample asset data filled into registration form.', 'info');
+    });
+  }
+
+  if (btnFillDemoReport) {
+    btnFillDemoReport.addEventListener('click', () => {
+      document.getElementById('report-asset').value = 'LAB-UPS-01';
+      document.getElementById('report-severity').value = '5';
+      document.getElementById('report-overdue').value = '10';
+      document.getElementById('report-deviation').value = '24.50';
+      document.getElementById('report-desc').value = 'Battery inverter phase fault and output voltage fluctuation';
+      showToast('Sample emergency fault data filled into report form.', 'info');
+    });
+  }
 
   // =========================================================================
   // DASHBOARD STATE SYNCHRONIZATION
@@ -177,15 +224,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (res.ok) {
-        alert('Success: ' + data.message);
+        showToast(data.message || 'Asset registered successfully.', 'success');
         formAddAsset.reset();
         refreshDashboard();
         loadGraphData();
       } else {
-        alert('Error: ' + data.message);
+        showToast(data.message || 'Failed to register asset.', 'danger');
       }
     } catch (err) {
-      alert('Network error registering asset.');
+      showToast('Network error registering asset.', 'danger');
     }
   });
 
@@ -209,14 +256,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (res.ok) {
-        alert('Triage Successful: Buffered in Circular Queue -> DLL Updated -> Drift & Blast Calculated -> Placed in Max-Heap!');
+        showToast('Report enqueued: Ingestion -> Drift Calc -> Blast Radius -> Max-Heap updated.', 'success');
         formSubmitReport.reset();
         refreshDashboard();
       } else {
-        alert('Triage Failed: ' + data.message);
+        showToast(data.message || 'Failed to process fault report.', 'danger');
       }
     } catch (err) {
-      alert('Network error submitting report.');
+      showToast('Network error submitting fault report.', 'danger');
     }
   });
 
@@ -225,13 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/dispatch', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        alert(`Dispatched Highest Urgency Job:\nTask: ${data.dispatched.taskId}\nAsset: ${data.dispatched.assetCode}\nRisk Score: ${data.dispatched.riskScore}`);
+        showToast(`Dispatched top task: ${data.dispatched.taskId} on ${data.dispatched.assetCode} (Risk: ${data.dispatched.riskScore})`, 'success');
         refreshDashboard();
       } else {
-        alert(data.message);
+        showToast(data.message || 'Triage queue is empty.', 'info');
       }
     } catch (err) {
-      alert('Error dispatching task.');
+      showToast('Error dispatching triage task.', 'danger');
     }
   });
 
@@ -240,14 +287,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/undo', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        alert('Undo Rollback Succeeded: ' + data.message);
+        showToast(`Rollback successful: ${data.message}`, 'success');
         undoCountSpan.textContent = data.remainingUndo;
         refreshDashboard();
       } else {
-        alert('Undo Notice: ' + data.message);
+        showToast(data.message || 'Undo stack is empty.', 'info');
       }
     } catch (err) {
-      alert('Error triggering undo.');
+      showToast('Error triggering rollback.', 'danger');
     }
   });
 
@@ -261,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(`🔥 CATASTROPHIC CASCADE SIMULATED:\nRoot Outage: ${data.simulatedAsset}\nBlast Radius: ${data.blastRadiusCount} affected machines\nPrioritization Multiplier: ${data.blastMultiplier}x\nFinal Effective Risk: ${data.riskScore}`);
+        showToast(`Cascade Simulated: Outage on ${data.simulatedAsset} affected ${data.blastRadiusCount} machines (${data.blastMultiplier}x risk boost)`, 'danger');
         
         // Highlight in visual network
         activeFailedNode = data.simulatedAsset;
@@ -273,14 +320,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBlastDetails(data.simulatedAsset, data.affectedDependents);
         refreshDashboard();
       } else {
-        alert('Simulation failed: ' + data.message);
+        showToast(data.message || 'Simulation failed.', 'danger');
       }
     } catch (err) {
-      alert('Network error triggering simulation.');
+      showToast('Network error triggering simulation.', 'danger');
     }
   });
 
-  btnRefreshTriage.addEventListener('click', refreshDashboard);
+  btnRefreshTriage.addEventListener('click', () => {
+    refreshDashboard();
+    showToast('Triage queue refreshed.', 'info');
+  });
 
   // =========================================================================
   // INTERACTIVE GRAPH CANVAS VISUALIZATION (Graph BFS & Blast Radius)
@@ -313,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // Categorize into hierarchy: roots (inDegree=0), intermediates, terminals
     const inDegrees = {};
     const outDegrees = {};
     graphNodes.forEach(n => { inDegrees[n.id] = 0; outDegrees[n.id] = 0; });
@@ -326,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const intermediates = graphNodes.filter(n => inDegrees[n.id] > 0 && outDegrees[n.id] > 0);
     const terminals = graphNodes.filter(n => outDegrees[n.id] === 0);
 
-    // Position columns
     const assignCol = (arr, colX) => {
       const step = height / (arr.length + 1);
       arr.forEach((node, i) => {
@@ -341,7 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
       assignCol(intermediates, width * 0.50);
       assignCol(terminals, width * 0.82);
     } else {
-      // Circular fallback
       const radius = Math.min(width, height) * 0.38;
       const angleStep = (2 * Math.PI) / graphNodes.length;
       graphNodes.forEach((node, i) => {
@@ -367,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.beginPath();
       ctx.moveTo(fromNode.x, fromNode.y);
       ctx.lineTo(toNode.x, toNode.y);
-      ctx.strokeStyle = isAffectedEdge ? '#ef4444' : '#334155';
+      ctx.strokeStyle = isAffectedEdge ? '#ef4444' : '#253553';
       ctx.lineWidth = isAffectedEdge ? 3 : 1.5;
       if (isAffectedEdge) {
         ctx.setLineDash([6, 4]);
@@ -377,7 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw Arrow head
       drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#ef4444' : '#475569');
     });
 
@@ -387,11 +433,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const isAffected = activeAffectedNodes.includes(node.id);
       const isSource = (node.blastRadius >= 4);
 
-      // Outer glow for failed or affected nodes
       if (isFailed || isAffected) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius + 8 + Math.sin(animProgress) * 4, 0, 2 * Math.PI);
-        ctx.fillStyle = isFailed ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.20)';
+        ctx.fillStyle = isFailed ? 'rgba(239, 68, 68, 0.22)' : 'rgba(245, 158, 11, 0.18)';
         ctx.fill();
       }
 
@@ -413,14 +458,12 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.lineWidth = isFailed ? 3 : 1.5;
       ctx.stroke();
 
-      // Node Label
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(node.id, node.x, node.y);
 
-      // Sub-label (Equipment name)
       ctx.fillStyle = '#94a3b8';
       ctx.font = '9px sans-serif';
       ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 12);
@@ -442,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fill();
   }
 
-  // Canvas Click Handler
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
     const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -458,7 +500,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Animation Loop for pulsing glow
   function animate() {
     animProgress += 0.05;
     if (activeFailedNode) {
@@ -473,7 +514,10 @@ document.addEventListener('DOMContentLoaded', () => {
     inspectBlastRadius(code);
   });
 
-  btnRefreshGraph.addEventListener('click', loadGraphData);
+  btnRefreshGraph.addEventListener('click', () => {
+    loadGraphData();
+    showToast('Topology reloaded.', 'info');
+  });
 
   async function inspectBlastRadius(assetCode) {
     activeFailedNode = assetCode;
@@ -491,26 +535,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderBlastDetails(source, affected) {
-    let html = `[GRAPH BFS FAILURE BLAST-RADIUS]\nSource Failure: [${source}]\nCascaded Affected Equipment: ${affected.length} machines\n`;
+    let text = `[GRAPH BFS FAILURE BLAST-RADIUS]\nSource Node: [${source}]\nCascaded Affected Equipment: ${affected.length} machines\n`;
     if (affected.length === 0) {
-      html += `  Impact: Localized terminal equipment (Zero downstream cascading).\n`;
+      text += `Impact: Localized terminal equipment (Zero downstream cascading).\n`;
     } else {
-      html += `  Downstream Affected Equipment Nodes:\n`;
+      text += `Downstream Affected Equipment Nodes:\n`;
       affected.forEach((n, i) => {
-        html += `    ${i + 1}. [${n}]\n`;
+        text += `  ${i + 1}. [${n}]\n`;
       });
-      html += `\nPrioritization Impact: Live Risk Score boosted by (1.0 + 0.20 * ${affected.length}) = ${(1.0 + 0.20 * affected.length).toFixed(2)}x`;
+      text += `\nPrioritization Impact: Live Risk Score boosted by (1.0 + 0.20 * ${affected.length}) = ${(1.0 + 0.20 * affected.length).toFixed(2)}x`;
     }
-    blastDetailsBox.textContent = html;
+    blastDetailsBox.textContent = text;
   }
 
   function renderSpofList(sources) {
     if (!sources || sources.length === 0) return;
     spofSummaryList.innerHTML = sources.slice(0, 4).map(s => `
-      <div class="spof-item ${s.totalBlastRadius >= 4 ? 'critical' : ''}">
+      <div class="spof-row ${s.totalBlastRadius >= 4 ? 'critical' : ''}">
         <div>
           <strong>[${escapeHtml(s.assetCode)}]</strong> ${escapeHtml(s.name)}
-          <div style="font-size: 0.75rem; color: #94a3b8;">Direct: ${s.outDegree} | Total Impact: ${s.totalBlastRadius} machines</div>
+          <div style="font-size: 0.74rem; color: #94a3b8;">Direct: ${s.outDegree} | Total Impact: ${s.totalBlastRadius} machines</div>
         </div>
         <span class="badge ${s.totalBlastRadius >= 4 ? 'badge-spof' : (s.totalBlastRadius >= 2 ? 'badge-high' : 'badge-terminal')}">
           ${escapeHtml(s.criticality)}
@@ -606,7 +650,10 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
-  btnRefreshFaulty.addEventListener('click', loadFaultyReport);
+  btnRefreshFaulty.addEventListener('click', () => {
+    loadFaultyReport();
+    showToast('Faulty equipment table re-sorted.', 'info');
+  });
 
   // CSV Export Handler
   btnExportCsv.addEventListener('click', () => {
@@ -614,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let type = 'faulty';
     if (activeSubtab === 'report-sources') type = 'sources';
     window.location.href = `/api/reports/export-csv?type=${type}`;
+    showToast(`Downloading ${type} report CSV...`, 'info');
   });
 
   // =========================================================================
@@ -629,11 +677,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       calibScheduleBody.innerHTML = data.map(item => {
-        let statusBadge = `<span class="badge badge-compliant">Compliant</span>`;
+        let statusBadge = `<span class="badge badge-compliant">COMPLIANT</span>`;
         if (item.dueDate <= 0) {
           statusBadge = `<span class="badge badge-overdue">OVERDUE</span>`;
         } else if (item.dueDate <= 30) {
-          statusBadge = `<span class="badge badge-due-soon">Due within ${item.dueDate} days</span>`;
+          statusBadge = `<span class="badge badge-due-soon">DUE SOON (${item.dueDate}d)</span>`;
         }
 
         return `
@@ -655,14 +703,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const start = parseInt(document.getElementById('calib-start-range').value, 10) || 0;
     const end = parseInt(document.getElementById('calib-end-range').value, 10) || 60;
     loadCalibrationSchedule(start, end);
+    showToast(`Filtering calibrations between ${start} and ${end} days.`, 'info');
   });
 
   btnAllCalib.addEventListener('click', () => {
     loadCalibrationSchedule(0, 9999999999);
+    showToast('Showing all calibration records.', 'info');
   });
 
   btnExportCalibCsv.addEventListener('click', () => {
     window.location.href = `/api/reports/export-csv?type=calibrations`;
+    showToast('Downloading calibration schedule CSV...', 'info');
   });
 
   // Utilities

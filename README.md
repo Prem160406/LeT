@@ -11,14 +11,14 @@ An academic Data Structures & Algorithms project (VIT Pune, Semester 3, Group 8,
 
 ---
 
-## 🏗️ Core Data Structures Implemented From Scratch
+## Core Data Structures Implemented From Scratch
 
 | # | Data Structure | Exact Role in Engine | Time Complexity |
 |---|---|---|---|
 | 1 | **Circular Queue** | Fixed-capacity, memory-bounded FIFO buffer for incoming service desk intake tickets. | $O(1)$ push / pop / peek |
 | 2 | **Hash Table** | Primary key asset lookup by unique equipment code (e.g. `LAB-PC-017`). Uses **Separate Chaining** with custom singly-linked buckets and dynamic rehashing at load factor $\ge 0.75$. | Average $O(1)$ lookup |
 | 3 | **Doubly Linked List** | Bi-directional interleaved fault and calibration history nodes per asset; enables linear drift rate calculation $\frac{\Delta(\text{Dev})}{\Delta(\text{Time})}$. | $O(1)$ append / unlink, $O(1)$ drift rate |
-| 4 | **Max-Heap** | Priority queue triaging emergency jobs by live composite Risk Score: $\text{Risk} = 3S + 2\text{Overdue} + 5\|\text{Drift}\|$. Root always holds the highest urgency job. | $O(1)$ root peek, $O(\log N)$ extraction / insertion |
+| 4 | **Max-Heap** | Priority queue triaging emergency jobs by live composite Risk Score: $\text{BaseRisk} = 3S + 2\text{Overdue} + 5\|\text{Drift}\|$. Root always holds the highest urgency job. | $O(1)$ root peek, $O(\log N)$ extraction / insertion |
 | 5 | **AVL Tree** | Self-balancing BST indexed by `next_calibration_due` date. Maintains $|BF| \le 1$ via Left-Left, Right-Right, Left-Right, and Right-Left rotations. | $O(\log N)$ search / insert, $O(\log N + K)$ range queries |
 | 6 | **Undo Stack** | LIFO stack recording atomic state snapshots for instant rollback of transactions. | $O(1)$ push / pop rollback |
 | 7 | **Merge Sort** | Standalone divide-and-conquer sorter for compliance audit reporting (sorts assets by downtime or fault count). | Strictly $O(N \log N)$ worst / avg / best |
@@ -26,7 +26,7 @@ An academic Data Structures & Algorithms project (VIT Pune, Semester 3, Group 8,
 
 ---
 
-## 🔄 Live Pipeline Working Principle
+## Live Pipeline Working Principle
 
 ```text
 [Incoming Fault Report]
@@ -38,10 +38,14 @@ An academic Data Structures & Algorithms project (VIT Pune, Semester 3, Group 8,
  2. Hash Table (O(1) Resolution by Asset Code)
          │
          ▼
- 3. Doubly Linked List (O(1) History Append & Drift Velocity Calculation)
+ 3. Doubly Linked List (O(1) History Append & Linear Drift Calculation)
          │
          ▼
- 4. Composite Risk Scoring -> Max-Heap (O(log N) Priority Urgency Queue)
+ 4. Graph BFS Blast-Radius Multiplier
+    EffectiveRisk = BaseRisk * (1.0 + 0.20 * BlastRadius)
+         │
+         ▼
+ 5. Max-Heap Priority Urgency Queue (O(log N) Priority Triage)
          │
          ├─► AVL Tree (O(log N) Calibration Schedule Indexing)
          └─► Undo Stack (O(1) LIFO Rollback Snapshot)
@@ -49,7 +53,7 @@ An academic Data Structures & Algorithms project (VIT Pune, Semester 3, Group 8,
 
 ---
 
-## 🚀 Quick Start (Windows)
+## Quick Start (Windows)
 
 ### 1. Launch Web Dashboard (One-Click)
 Double-click [`start.bat`](start.bat) or run in terminal:
@@ -57,14 +61,14 @@ Double-click [`start.bat`](start.bat) or run in terminal:
 start.bat
 ```
 This automatically compiles the project (if needed), launches the server in the background, and opens your browser to:
-👉 **`http://localhost:8080/`**
+**`http://localhost:8080/`**
 
 To stop the background server:
 ```cmd
 stop.bat
 ```
 
-### 2. Run CLI Verification Suite (All 8 Structures + Pipeline)
+### 2. Run CLI Verification Suite (All 11 Demos)
 ```cmd
 mingw32-make test
 ```
@@ -81,7 +85,7 @@ mingw32-make
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 ├── include/
@@ -112,18 +116,18 @@ mingw32-make
 │   ├── HttpServer.cpp
 │   └── main.cpp            # Test suite & server entry point
 ├── frontend/
-│   ├── index.html          # Web dashboard
-│   ├── styles.css          # Modern dark-mode layout
-│   └── app.js              # REST client
+│   ├── index.html          # Web dashboard (Emoji-free, accessible layout)
+│   ├── styles.css          # Clean dark enterprise design system
+│   └── app.js              # REST client & interactive topology canvas
 ├── Makefile                # MinGW build specification
-├── PROGRESS.md             # Milestone audit trail & handoff safety notes
+├── PROGRESS.md             # 100% milestone audit trail
 ├── start.bat               # Windows start launcher
 └── stop.bat                # Windows stop script
 ```
 
 ---
 
-## 👥 Authors
+## Authors
 * **Institution:** Vishwakarma Institute of Technology (VIT), Pune
 * **Department:** Information Technology
 * **Academic Term:** Semester 3, Group 8

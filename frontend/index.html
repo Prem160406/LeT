@@ -7,83 +7,100 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <div class="header-content">
-      <div class="title-group">
-        <h1>Lab Operations, Emergency Fault Triage & Calibration Engine</h1>
-        <p class="subtitle">VIT Pune — Semester 3 IT Dept (Group 8) | Custom DSA Backend (Zero STL Containers)</p>
+  <!-- Global Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-title">Lab Operations, Fault Triage & Calibration Engine</div>
+        <div class="brand-subtitle">VIT Pune — Semester 3 IT Department (Group 8) | Custom C++ DSA Backend</div>
       </div>
-      <div class="actions">
-        <button id="btn-simulate-root" class="btn btn-danger-outline" title="Simulate Critical UPS Outage">
-          🔥 Simulate Root Failure
+      <div class="header-actions">
+        <span class="status-indicator">
+          <span class="status-dot"></span> Engine Online (Port 8080)
+        </span>
+        <button id="btn-simulate-root" class="btn btn-outline-danger" title="Simulate catastrophic failure on main power UPS">
+          Simulate Root Failure
         </button>
-        <button id="btn-undo" class="btn btn-warning" title="O(1) LIFO Rollback">
-          ↺ Undo (<span id="undo-count">0</span>)
+        <button id="btn-undo" class="btn btn-outline-warning" title="O(1) LIFO rollback of most recent transaction">
+          Undo Last Action (<span id="undo-count">0</span>)
         </button>
-        <button id="btn-dispatch" class="btn btn-danger" title="O(log N) Extract Root">
-          ⚡ Dispatch Highest Urgency
+        <button id="btn-dispatch" class="btn btn-danger" title="O(log N) extract highest-risk job from Max-Heap">
+          Dispatch Top Urgency
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
-  <nav class="nav-tabs-container">
-    <div class="nav-tabs">
-      <button class="nav-tab active" data-tab="tab-operations">⚙️ Live Operations & Triage</button>
-      <button class="nav-tab" data-tab="tab-network">🌐 Dependency Network & Blast Radius</button>
-      <button class="nav-tab" data-tab="tab-reports">📊 Laboratory Audit & Reports</button>
-      <button class="nav-tab" data-tab="tab-calibrations">📅 AVL Calibration Schedule</button>
+  <!-- Section Tabs Navigation -->
+  <nav class="app-tabs-bar">
+    <div class="tabs-inner">
+      <button class="tab-btn active" data-tab="tab-operations">Dashboard & Triage</button>
+      <button class="tab-btn" data-tab="tab-network">Dependency Topology</button>
+      <button class="tab-btn" data-tab="tab-reports">Audit & Reports</button>
+      <button class="tab-btn" data-tab="tab-calibrations">Calibration Schedule</button>
     </div>
   </nav>
 
-  <main class="container">
-    <!-- Live Metrics Grid -->
-    <section class="metrics-grid">
+  <main class="app-main">
+    <!-- Live Architecture & Pipeline Metrics -->
+    <section class="metrics-row">
       <div class="metric-card">
-        <div class="metric-label">Hash Table Registry</div>
-        <div class="metric-value" id="val-asset-count">0</div>
-        <div class="metric-meta">O(1) Separate Chaining Lookup</div>
+        <div class="metric-head">Hash Table Registry</div>
+        <div class="metric-num" id="val-asset-count">0</div>
+        <div class="metric-foot">O(1) Separate Chaining Lookup</div>
       </div>
       <div class="metric-card highlight">
-        <div class="metric-label">Max-Heap Triage Queue</div>
-        <div class="metric-value" id="val-triage-count">0</div>
-        <div class="metric-meta">O(1) Root Urgency | O(log N) Insert</div>
+        <div class="metric-head">Max-Heap Triage Queue</div>
+        <div class="metric-num" id="val-triage-count">0</div>
+        <div class="metric-foot">O(1) Root Urgency | O(log N) Insert</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Critical Source SPOFs</div>
-        <div class="metric-value" id="val-spof-count">0</div>
-        <div class="metric-meta">Graph BFS Identified Failure Points</div>
+        <div class="metric-head">Critical Infrastructure SPOFs</div>
+        <div class="metric-num" id="val-spof-count">0</div>
+        <div class="metric-foot">Graph BFS Identified Vulnerabilities</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">AVL Calibration Due</div>
-        <div class="metric-value" id="val-calib-count">0</div>
-        <div class="metric-meta">O(log N + K) Self-Balancing Index</div>
+        <div class="metric-head">AVL Calibration Due</div>
+        <div class="metric-num" id="val-calib-count">0</div>
+        <div class="metric-foot">O(log N + K) Self-Balancing Range Index</div>
       </div>
     </section>
 
     <!-- ================================================================= -->
-    <!-- TAB 1: OPERATIONS & FAULT INTAKE -->
+    <!-- TAB 1: OPERATIONS & TRIAGE -->
     <!-- ================================================================= -->
     <div id="tab-operations" class="tab-pane active">
-      <div class="forms-grid">
+      <!-- Architecture Helper Banner -->
+      <div class="info-banner">
+        <strong>Working Principle:</strong> Reports buffer in the <strong>Circular Queue</strong> (O(1)) &rarr; Locate asset in <strong>Hash Table</strong> (O(1)) &rarr; Append to <strong>Doubly Linked List</strong> (O(1)) &rarr; Compute <strong>Linear Drift Rate</strong> &rarr; Multiply by <strong>Graph Blast Radius</strong> &rarr; Prioritize in <strong>Max-Heap</strong> (O(log N)).
+      </div>
+
+      <div class="cards-grid">
         <!-- Form 1: Add Asset -->
-        <section class="card">
-          <h2>1. Register Lab Equipment</h2>
-          <p class="section-desc">Indexed into <strong>Hash Table</strong> (O(1)) and <strong>AVL Tree</strong> (O(log N)).</p>
+        <section class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h3>Register Laboratory Equipment</h3>
+              <p class="panel-desc">Stored in Hash Table for O(1) lookup and indexed into AVL Tree for calibration.</p>
+            </div>
+            <button type="button" id="btn-fill-demo-asset" class="btn btn-sm btn-ghost">Quick Sample</button>
+          </div>
           <form id="form-add-asset">
             <div class="form-group">
-              <label for="asset-code">Asset Code *</label>
-              <input type="text" id="asset-code" placeholder="e.g. LAB-PC-017" required>
+              <label for="asset-code">Asset Code</label>
+              <input type="text" id="asset-code" placeholder="e.g. LAB-SPEC-003" required>
             </div>
             <div class="form-group">
-              <label for="asset-name">Equipment Name *</label>
-              <input type="text" id="asset-name" placeholder="e.g. Centrifuge CF-200" required>
+              <label for="asset-name">Equipment Name</label>
+              <input type="text" id="asset-name" placeholder="e.g. Fourier Transform Spectrometer" required>
             </div>
             <div class="form-row">
               <div class="form-group col">
                 <label for="asset-loc">Lab Location</label>
-                <input type="text" id="asset-loc" placeholder="Room 304, Bio Lab">
+                <input type="text" id="asset-loc" placeholder="Room 304, Bio-Optics">
               </div>
               <div class="form-group col">
                 <label for="asset-calib">Next Calib Due (Days)</label>
@@ -94,24 +111,29 @@
               <label for="asset-downtime">Historical Downtime (Hours)</label>
               <input type="number" step="0.5" id="asset-downtime" value="0.0">
             </div>
-            <button type="submit" class="btn btn-primary">Register Asset</button>
+            <button type="submit" class="btn btn-primary btn-block">Register Equipment</button>
           </form>
         </section>
 
         <!-- Form 2: Submit Fault Report -->
-        <section class="card">
-          <h2>2. Ingest Service Fault Report</h2>
-          <p class="section-desc">Pipes through: <strong>Circular Queue</strong> &rarr; <strong>Hash Lookup</strong> &rarr; <strong>DLL Append</strong> &rarr; <strong>Drift Calc</strong> &rarr; <strong>Blast Radius</strong> &rarr; <strong>Max-Heap</strong>.</p>
+        <section class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h3>Ingest Service Desk Report</h3>
+              <p class="panel-desc">Buffers in Circular Queue and triggers real-time drift & risk triage.</p>
+            </div>
+            <button type="button" id="btn-fill-demo-report" class="btn btn-sm btn-ghost">Quick Sample</button>
+          </div>
           <form id="form-submit-report">
             <div class="form-row">
               <div class="form-group col">
-                <label for="report-asset">Target Asset Code *</label>
-                <input type="text" id="report-asset" placeholder="e.g. LAB-UPS-01" required>
+                <label for="report-asset">Target Asset Code</label>
+                <input type="text" id="report-asset" placeholder="e.g. LAB-CENT-009" required>
               </div>
               <div class="form-group col">
-                <label for="report-severity">Severity (1 to 5) *</label>
+                <label for="report-severity">Severity Rating</label>
                 <select id="report-severity" required>
-                  <option value="1">1 - Minor Drift</option>
+                  <option value="1">1 - Minor Measurement Drift</option>
                   <option value="2">2 - Moderate Warning</option>
                   <option value="3">3 - Operational Impact</option>
                   <option value="4">4 - High Urgency</option>
@@ -122,37 +144,37 @@
             <div class="form-row">
               <div class="form-group col">
                 <label for="report-overdue">Days Overdue</label>
-                <input type="number" id="report-overdue" value="5">
+                <input type="number" id="report-overdue" value="6">
               </div>
               <div class="form-group col">
-                <label for="report-deviation">Measured Deviation (&Delta;Dev)</label>
-                <input type="number" step="0.01" id="report-deviation" value="14.8" required>
+                <label for="report-deviation">Sensor Offset (Delta Deviation)</label>
+                <input type="number" step="0.01" id="report-deviation" value="8.40" required>
               </div>
             </div>
             <div class="form-group">
-              <label for="report-desc">Issue Description</label>
-              <input type="text" id="report-desc" placeholder="Rotor vibration / voltage sag...">
+              <label for="report-desc">Problem Description</label>
+              <input type="text" id="report-desc" placeholder="Rotor bearing imbalance causing acoustic oscillation">
             </div>
-            <button type="submit" class="btn btn-danger">Enqueue & Prioritize Fault</button>
+            <button type="submit" class="btn btn-danger btn-block">Submit Report to Triage Queue</button>
           </form>
         </section>
       </div>
 
       <!-- Live Triage Queue Table -->
-      <section class="card full-width">
-        <div class="table-header">
+      <section class="panel-card full-width">
+        <div class="panel-head">
           <div>
-            <h2>3. Live Max-Heap Fault Triage Queue</h2>
-            <p class="section-desc">Prioritized dynamically by Risk Score: <code>EffectiveRisk = (3*Sev + 2*Overdue + 5*|Drift|) * (1.0 + 0.20*BlastRadius)</code></p>
+            <h3>Active Max-Heap Emergency Triage Queue</h3>
+            <p class="panel-desc">Order: Root is always the highest urgency task. Formula: <code>EffectiveRisk = (3*Sev + 2*Overdue + 5*|Drift|) * (1.0 + 0.20*BlastRadius)</code></p>
           </div>
-          <button id="btn-refresh-triage" class="btn btn-secondary">⟳ Refresh Triage</button>
+          <button id="btn-refresh-triage" class="btn btn-sm btn-secondary">Refresh Queue</button>
         </div>
 
-        <div class="table-container">
+        <div class="table-wrap">
           <table id="table-triage">
             <thead>
               <tr>
-                <th>Priority / Root</th>
+                <th>Priority</th>
                 <th>Task ID</th>
                 <th>Asset Code</th>
                 <th>Equipment Name</th>
@@ -167,7 +189,7 @@
             </thead>
             <tbody id="triage-body">
               <tr>
-                <td colspan="11" class="empty-state">No triage tasks in queue. Submit a fault report above.</td>
+                <td colspan="11" class="empty-state">No active triage tasks. Submit a fault report above.</td>
               </tr>
             </tbody>
           </table>
@@ -176,49 +198,47 @@
     </div>
 
     <!-- ================================================================= -->
-    <!-- TAB 2: DEPENDENCY NETWORK & BLAST RADIUS VISUALIZER -->
+    <!-- TAB 2: DEPENDENCY TOPOLOGY -->
     <!-- ================================================================= -->
     <div id="tab-network" class="tab-pane">
-      <section class="card full-width">
-        <div class="table-header">
+      <section class="panel-card full-width">
+        <div class="panel-head">
           <div>
-            <h2>Interactive Equipment Dependency Topology (Adjacency List Graph)</h2>
-            <p class="section-desc">Directed dependency edges model operational connectivity. Click any node or test BFS to trigger live blast-radius propagation.</p>
+            <h3>Laboratory Equipment Dependency Topology (Adjacency List Graph)</h3>
+            <p class="panel-desc">Shows operational equipment dependencies. Click any node to evaluate its downstream failure cascade via Breadth-First Search (BFS).</p>
           </div>
-          <div class="actions">
-            <button id="btn-refresh-graph" class="btn btn-secondary">⟳ Reload Topology</button>
-          </div>
+          <button id="btn-refresh-graph" class="btn btn-sm btn-secondary">Reload Topology</button>
         </div>
 
-        <div class="canvas-wrapper">
-          <canvas id="graph-canvas" width="1100" height="420"></canvas>
+        <div class="canvas-box">
+          <canvas id="graph-canvas" width="1150" height="420"></canvas>
           <div class="canvas-legend">
-            <span class="legend-item"><span class="dot normal"></span> Normal Asset</span>
-            <span class="legend-item"><span class="dot source"></span> Root Source (High Blast Radius)</span>
-            <span class="legend-item"><span class="dot failed"></span> Active Fault Root</span>
-            <span class="legend-item"><span class="dot affected"></span> Cascaded Dependent Impact</span>
+            <span class="legend-chip"><span class="dot normal"></span> Normal Equipment</span>
+            <span class="legend-chip"><span class="dot source"></span> Root Source (High Out-Degree)</span>
+            <span class="legend-chip"><span class="dot failed"></span> Failed Root Machine</span>
+            <span class="legend-chip"><span class="dot affected"></span> Cascaded Dependent Impact</span>
           </div>
         </div>
 
-        <div class="forms-grid" style="margin-top: 1.5rem;">
-          <div class="card">
-            <h3>Inspect Specific Failure Blast Radius</h3>
-            <p class="section-desc">Runs Graph BFS to discover the complete transitive failure cascade.</p>
+        <div class="cards-grid" style="margin-top: 1.25rem;">
+          <div class="panel-card">
+            <h4>Analyze Failure Blast Radius</h4>
+            <p class="panel-desc">Runs Graph BFS to find all downstream dependent machines.</p>
             <div class="form-row">
               <div class="form-group col">
                 <input type="text" id="blast-asset-input" value="LAB-UPS-01" placeholder="Asset Code">
               </div>
               <div class="form-group col-auto">
-                <button id="btn-inspect-blast" class="btn btn-primary">Run BFS Blast Analysis</button>
+                <button id="btn-inspect-blast" class="btn btn-primary">Run BFS Analysis</button>
               </div>
             </div>
-            <div id="blast-details-box" class="demo-box">Select an asset or click a node on the canvas above.</div>
+            <div id="blast-details-box" class="code-box">Select an asset above or click a node on the canvas.</div>
           </div>
 
-          <div class="card">
-            <h3>Single Point of Failure (SPOF) Summary</h3>
-            <p class="section-desc">High-centrality lab equipment whose failure causes facility-wide outages.</p>
-            <div id="spof-summary-list" class="spof-list">
+          <div class="panel-card">
+            <h4>Single Point of Failure (SPOF) Summary</h4>
+            <p class="panel-desc">Equipment whose failure causes systemic multi-instrument shutdowns.</p>
+            <div id="spof-summary-list" class="spof-container">
               <!-- Dynamically populated -->
             </div>
           </div>
@@ -227,39 +247,39 @@
     </div>
 
     <!-- ================================================================= -->
-    <!-- TAB 3: AUDIT & REPORT GENERATION CENTER -->
+    <!-- TAB 3: AUDIT & COMPLIANCE REPORTS -->
     <!-- ================================================================= -->
     <div id="tab-reports" class="tab-pane">
-      <section class="card full-width">
-        <div class="table-header">
+      <section class="panel-card full-width">
+        <div class="panel-head">
           <div>
-            <h2>Laboratory Audit & Report Generation Center</h2>
-            <p class="section-desc">Multi-dimensional operational audit reports powered by Merge Sort, Graph BFS, and AVL Tree range queries.</p>
+            <h3>Laboratory Audit & Operational Reports</h3>
+            <p class="panel-desc">Analytical compliance reports generated using custom Merge Sort and Graph BFS algorithms.</p>
           </div>
-          <div class="actions">
-            <button id="btn-print-report" class="btn btn-secondary" onclick="window.print()">🖨️ Print / PDF</button>
-            <button id="btn-export-csv" class="btn btn-primary">⬇ Export Active Report (CSV)</button>
+          <div class="header-actions">
+            <button id="btn-print-report" class="btn btn-sm btn-secondary" onclick="window.print()">Print Report</button>
+            <button id="btn-export-csv" class="btn btn-sm btn-primary">Export Active Table (CSV)</button>
           </div>
         </div>
 
-        <div class="report-subtabs">
-          <button class="subtab-btn active" data-subtab="report-faulty">⚠️ Faulty Equipment & Downtime Report</button>
-          <button class="subtab-btn" data-subtab="report-sources">🔌 Root Sources & SPOF Criticality</button>
-          <button class="subtab-btn" data-subtab="report-all-assets">📋 Full Equipment Inventory</button>
+        <div class="subtabs-bar">
+          <button class="subtab-btn active" data-subtab="report-faulty">Faulty Equipment & Downtime Audit</button>
+          <button class="subtab-btn" data-subtab="report-sources">Root Infrastructure & SPOF Analysis</button>
+          <button class="subtab-btn" data-subtab="report-all-assets">Complete Equipment Inventory</button>
         </div>
 
         <!-- Subtab 1: Faulty Equipment -->
         <div id="report-faulty" class="subtab-content active">
-          <div class="filter-bar">
-            <span>Sort By:</span>
+          <div class="filter-controls">
+            <label for="select-faulty-sort">Sort Order (Merge Sort):</label>
             <select id="select-faulty-sort">
-              <option value="downtime">Total Downtime (Descending) - Merge Sort</option>
-              <option value="faults">Total Fault Count (Descending) - Merge Sort</option>
+              <option value="downtime">Total Accumulated Downtime (Descending)</option>
+              <option value="faults">Total Fault Count (Descending)</option>
               <option value="calib">Next Calibration Due (Ascending)</option>
             </select>
-            <button id="btn-refresh-faulty-report" class="btn btn-secondary btn-sm">Apply Sort</button>
+            <button id="btn-refresh-faulty-report" class="btn btn-sm btn-secondary">Apply Sort</button>
           </div>
-          <div class="table-container">
+          <div class="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -275,7 +295,7 @@
                 </tr>
               </thead>
               <tbody id="faulty-report-body">
-                <tr><td colspan="9" class="empty-state">Loading faulty equipment audit...</td></tr>
+                <tr><td colspan="9" class="empty-state">Loading faulty equipment data...</td></tr>
               </tbody>
             </table>
           </div>
@@ -283,8 +303,7 @@
 
         <!-- Subtab 2: Sources & SPOF -->
         <div id="report-sources" class="subtab-content">
-          <p class="section-desc">Evaluates all upstream root power/network/cooling sources and quantifies transitive blast radius.</p>
-          <div class="table-container">
+          <div class="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -293,20 +312,20 @@
                   <th>Location</th>
                   <th>Direct Dependents (Out-Degree)</th>
                   <th>Inbound Inputs (In-Degree)</th>
-                  <th>Total Transitive Blast Radius</th>
-                  <th>Systemic Criticality Status</th>
+                  <th>Total Blast Radius</th>
+                  <th>Criticality Status</th>
                 </tr>
               </thead>
               <tbody id="sources-report-body">
-                <tr><td colspan="7" class="empty-state">Loading sources & SPOF audit...</td></tr>
+                <tr><td colspan="7" class="empty-state">Loading sources & SPOF data...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- Subtab 3: Full Inventory -->
+        <!-- Subtab 3: Complete Inventory -->
         <div id="report-all-assets" class="subtab-content">
-          <div class="table-container">
+          <div class="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -331,31 +350,29 @@
     <!-- TAB 4: AVL CALIBRATION SCHEDULE -->
     <!-- ================================================================= -->
     <div id="tab-calibrations" class="tab-pane">
-      <section class="card full-width">
-        <div class="table-header">
+      <section class="panel-card full-width">
+        <div class="panel-head">
           <div>
-            <h2>Self-Balancing AVL Calibration Compliance Schedule</h2>
-            <p class="section-desc">Indexed by next_calibration_due date. Guaranteed O(log N + K) range queries maintaining balance factor &le; 1.</p>
+            <h3>AVL Tree Calibration Compliance Schedule</h3>
+            <p class="panel-desc">Indexed by next_calibration_due date. Guaranteed O(log N + K) range queries via self-balancing AVL binary search tree.</p>
           </div>
-          <div class="actions">
-            <button id="btn-export-calib-csv" class="btn btn-primary">⬇ Download Calibration CSV</button>
-          </div>
+          <button id="btn-export-calib-csv" class="btn btn-sm btn-primary">Export Calibration CSV</button>
         </div>
 
-        <div class="filter-bar">
+        <div class="filter-controls">
           <label>Query Range (Days):</label>
-          <input type="number" id="calib-start-range" value="0" style="width: 100px;">
+          <input type="number" id="calib-start-range" value="0" style="width: 90px;">
           <span>to</span>
-          <input type="number" id="calib-end-range" value="60" style="width: 100px;">
-          <button id="btn-query-calib" class="btn btn-secondary btn-sm">Filter Range Query</button>
-          <button id="btn-all-calib" class="btn btn-secondary btn-sm">Show All</button>
+          <input type="number" id="calib-end-range" value="60" style="width: 90px;">
+          <button id="btn-query-calib" class="btn btn-sm btn-secondary">Filter Range Query</button>
+          <button id="btn-all-calib" class="btn btn-sm btn-ghost">Show All Records</button>
         </div>
 
-        <div class="table-container" style="margin-top: 1rem;">
+        <div class="table-wrap" style="margin-top: 1rem;">
           <table>
             <thead>
               <tr>
-                <th>Due In (Days / Epoch)</th>
+                <th>Due In</th>
                 <th>Asset Code</th>
                 <th>Equipment Name</th>
                 <th>Lab Location</th>
@@ -371,8 +388,9 @@
     </div>
   </main>
 
-  <footer>
-    <p>VIT Pune | Department of Information Technology | Semester 3 DSA Course Project (Group 8)</p>
+  <footer class="app-footer">
+    <div>VIT Pune | Department of Information Technology | Semester 3 DSA Course Project (Group 8)</div>
+    <div class="footer-meta">Backend: 100% Custom C++ Data Structures (No STL Containers) | Transport: WinSock2 HTTP</div>
   </footer>
 
   <script src="app.js"></script>
