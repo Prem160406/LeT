@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lab Operations, Emergency Fault Triage & Calibration Engine</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body>
   <!-- Global Notification Toast Container -->
@@ -14,21 +15,24 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-title">Lab Operations, Fault Triage & Calibration Engine</div>
-        <div class="brand-subtitle">VIT Pune — Semester 3 IT Department (Group 8) | Custom C++ DSA Backend</div>
+        <div class="brand-mark" aria-hidden="true">LE</div>
+        <div>
+          <div class="brand-title">Lab Equipment Operations</div>
+          <div class="brand-subtitle">VIT Pune · Instrument reliability dashboard</div>
+        </div>
       </div>
       <div class="header-actions">
         <span class="status-indicator">
-          <span class="status-dot"></span> Engine Online (Port 8080)
+          <span class="status-dot"></span> C++ engine · Port 8080
         </span>
         <button id="btn-simulate-root" class="btn btn-outline-danger" title="Simulate catastrophic failure on main power UPS">
-          Simulate Root Failure
+          Simulate UPS failure
         </button>
         <button id="btn-undo" class="btn btn-outline-warning" title="O(1) LIFO rollback of most recent transaction">
-          Undo Last Action (<span id="undo-count">0</span>)
+          Undo (<span id="undo-count">0</span>)
         </button>
         <button id="btn-dispatch" class="btn btn-danger" title="O(log N) extract highest-risk job from Max-Heap">
-          Dispatch Top Urgency
+          Dispatch highest priority
         </button>
       </div>
     </div>
@@ -37,35 +41,46 @@
   <!-- Section Tabs Navigation -->
   <nav class="app-tabs-bar">
     <div class="tabs-inner">
-      <button class="tab-btn active" data-tab="tab-operations">Dashboard & Triage</button>
-      <button class="tab-btn" data-tab="tab-network">Dependency Topology</button>
-      <button class="tab-btn" data-tab="tab-reports">Audit & Reports</button>
-      <button class="tab-btn" data-tab="tab-calibrations">Calibration Schedule</button>
+      <button class="tab-btn active" data-tab="tab-operations">Overview & triage</button>
+      <button class="tab-btn" data-tab="tab-network">Equipment dependencies</button>
+      <button class="tab-btn" data-tab="tab-reports">Reports</button>
+      <button class="tab-btn" data-tab="tab-calibrations">Calibration</button>
     </div>
   </nav>
 
   <main class="app-main">
-    <!-- Live Architecture & Pipeline Metrics -->
+    <section class="page-intro" aria-labelledby="page-title">
+      <div class="intro-copy">
+        <div class="eyebrow">Laboratory reliability</div>
+        <h1 id="page-title">Keep critical equipment in service.</h1>
+        <p>Track lab instruments, report faults, and see which issue needs attention first. Priorities account for fault severity, overdue calibration, sensor drift, and the equipment that depends on each asset.</p>
+      </div>
+      <div class="workflow-note">
+        <strong>From fault report to action</strong>
+        Log a problem → review its priority and downstream impact → dispatch the most urgent work.
+      </div>
+    </section>
+    <!-- Live operational metrics -->
     <section class="metrics-row">
       <div class="metric-card">
-        <div class="metric-head">Hash Table Registry</div>
+        <div class="metric-head">Equipment tracked</div>
         <div class="metric-num" id="val-asset-count">0</div>
-        <div class="metric-foot">O(1) Separate Chaining Lookup</div>
+        <div class="metric-foot">Hash Table · O(1) lookup</div>
       </div>
       <div class="metric-card highlight">
-        <div class="metric-head">Max-Heap Triage Queue</div>
+        <div class="metric-head">Open fault reports</div>
         <div class="metric-num" id="val-triage-count">0</div>
-        <div class="metric-foot">O(1) Root Urgency | O(log N) Insert</div>
+        <div class="metric-foot">Max-Heap · O(1) root, O(log N) insert</div>
       </div>
       <div class="metric-card">
-        <div class="metric-head">Critical Infrastructure SPOFs</div>
+        <div class="metric-head">High-impact assets</div>
         <div class="metric-num" id="val-spof-count">0</div>
-        <div class="metric-foot">Graph BFS Identified Vulnerabilities</div>
+        <div class="metric-foot">Dependency graph · BFS impact analysis</div>
       </div>
       <div class="metric-card">
-        <div class="metric-head">AVL Calibration Due</div>
+        <div class="metric-head">Calibration due soon</div>
         <div class="metric-num" id="val-calib-count">0</div>
-        <div class="metric-foot">O(log N + K) Self-Balancing Range Index</div>
+        <div class="metric-foot">AVL Tree · O(log N + K) range query</div>
       </div>
     </section>
 
@@ -75,7 +90,7 @@
     <div id="tab-operations" class="tab-pane active">
       <!-- Architecture Helper Banner -->
       <div class="info-banner">
-        <strong>Working Principle:</strong> Reports buffer in the <strong>Circular Queue</strong> (O(1)) &rarr; Locate asset in <strong>Hash Table</strong> (O(1)) &rarr; Append to <strong>Doubly Linked List</strong> (O(1)) &rarr; Compute <strong>Linear Drift Rate</strong> &rarr; Multiply by <strong>Graph Blast Radius</strong> &rarr; Prioritize in <strong>Max-Heap</strong> (O(log N)).
+        <strong>How prioritization works:</strong> Each report is ranked using its severity, how overdue the asset is, sensor drift, and the number of dependent instruments that could be affected.
       </div>
 
       <div class="cards-grid">
@@ -83,10 +98,10 @@
         <section class="panel-card">
           <div class="panel-head">
             <div>
-              <h3>Register Laboratory Equipment</h3>
-              <p class="panel-desc">Stored in Hash Table for O(1) lookup and indexed into AVL Tree for calibration.</p>
+              <h3>Add equipment</h3>
+              <p class="panel-desc">Register an instrument so faults and upcoming calibration can be tracked.</p>
             </div>
-            <button type="button" id="btn-fill-demo-asset" class="btn btn-sm btn-ghost">Quick Sample</button>
+            <button type="button" id="btn-fill-demo-asset" class="btn btn-sm btn-ghost">Fill sample</button>
           </div>
           <form id="form-add-asset">
             <div class="form-group">
@@ -111,7 +126,7 @@
               <label for="asset-downtime">Historical Downtime (Hours)</label>
               <input type="number" step="0.5" id="asset-downtime" value="0.0">
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Register Equipment</button>
+            <button type="submit" class="btn btn-primary btn-block">Add to equipment register</button>
           </form>
         </section>
 
@@ -119,10 +134,10 @@
         <section class="panel-card">
           <div class="panel-head">
             <div>
-              <h3>Ingest Service Desk Report</h3>
-              <p class="panel-desc">Buffers in Circular Queue and triggers real-time drift & risk triage.</p>
+              <h3>Report a fault</h3>
+              <p class="panel-desc">Describe the problem. The system will calculate its place in the triage queue.</p>
             </div>
-            <button type="button" id="btn-fill-demo-report" class="btn btn-sm btn-ghost">Quick Sample</button>
+            <button type="button" id="btn-fill-demo-report" class="btn btn-sm btn-ghost">Fill sample</button>
           </div>
           <form id="form-submit-report">
             <div class="form-row">
@@ -164,8 +179,8 @@
       <section class="panel-card full-width">
         <div class="panel-head">
           <div>
-            <h3>Active Max-Heap Emergency Triage Queue</h3>
-            <p class="panel-desc">Order: Root is always the highest urgency task. Formula: <code>EffectiveRisk = (3*Sev + 2*Overdue + 5*|Drift|) * (1.0 + 0.20*BlastRadius)</code></p>
+            <h3>Faults needing attention</h3>
+            <p class="panel-desc">The first item is the highest-priority open report. Dispatch it when ready for action.</p>
           </div>
           <button id="btn-refresh-triage" class="btn btn-sm btn-secondary">Refresh Queue</button>
         </div>
@@ -204,8 +219,8 @@
       <section class="panel-card full-width">
         <div class="panel-head">
           <div>
-            <h3>Laboratory Equipment Dependency Topology (Adjacency List Graph)</h3>
-            <p class="panel-desc">Shows operational equipment dependencies. Click any node to evaluate its downstream failure cascade via Breadth-First Search (BFS).</p>
+            <h3>What depends on what</h3>
+            <p class="panel-desc">Explore equipment dependencies. Select an asset to see which instruments could be affected if it fails. <span class="tech-note">Adjacency-list graph · Breadth-first search (BFS)</span></p>
           </div>
           <button id="btn-refresh-graph" class="btn btn-sm btn-secondary">Reload Topology</button>
         </div>
@@ -214,30 +229,30 @@
           <canvas id="graph-canvas" width="1150" height="420"></canvas>
           <div class="canvas-legend">
             <span class="legend-chip"><span class="dot normal"></span> Normal Equipment</span>
-            <span class="legend-chip"><span class="dot source"></span> Root Source (High Out-Degree)</span>
-            <span class="legend-chip"><span class="dot failed"></span> Failed Root Machine</span>
-            <span class="legend-chip"><span class="dot affected"></span> Cascaded Dependent Impact</span>
+            <span class="legend-chip"><span class="dot source"></span> Shared source</span>
+            <span class="legend-chip"><span class="dot failed"></span> Selected asset</span>
+            <span class="legend-chip"><span class="dot affected"></span> Potentially affected</span>
           </div>
         </div>
 
         <div class="cards-grid" style="margin-top: 1.25rem;">
           <div class="panel-card">
-            <h4>Analyze Failure Blast Radius</h4>
-            <p class="panel-desc">Runs Graph BFS to find all downstream dependent machines.</p>
+            <h4>Check an asset's impact</h4>
+            <p class="panel-desc">Find downstream equipment that relies on this asset.</p>
             <div class="form-row">
               <div class="form-group col">
                 <input type="text" id="blast-asset-input" value="LAB-UPS-01" placeholder="Asset Code">
               </div>
               <div class="form-group col-auto">
-                <button id="btn-inspect-blast" class="btn btn-primary">Run BFS Analysis</button>
+                <button id="btn-inspect-blast" class="btn btn-primary">Check impact</button>
               </div>
             </div>
             <div id="blast-details-box" class="code-box">Select an asset above or click a node on the canvas.</div>
           </div>
 
           <div class="panel-card">
-            <h4>Single Point of Failure (SPOF) Summary</h4>
-            <p class="panel-desc">Equipment whose failure causes systemic multi-instrument shutdowns.</p>
+            <h4>Assets with the widest impact</h4>
+            <p class="panel-desc">Equipment whose failure could affect several other instruments.</p>
             <div id="spof-summary-list" class="spof-container">
               <!-- Dynamically populated -->
             </div>
@@ -253,8 +268,8 @@
       <section class="panel-card full-width">
         <div class="panel-head">
           <div>
-            <h3>Laboratory Audit & Operational Reports</h3>
-            <p class="panel-desc">Analytical compliance reports generated using custom Merge Sort and Graph BFS algorithms.</p>
+            <h3>Equipment reports</h3>
+            <p class="panel-desc">Review faults, equipment dependencies, and the complete instrument register. <span class="tech-note">Custom Merge Sort for report ordering</span></p>
           </div>
           <div class="header-actions">
             <button id="btn-print-report" class="btn btn-sm btn-secondary" onclick="window.print()">Print Report</button>
@@ -263,15 +278,15 @@
         </div>
 
         <div class="subtabs-bar">
-          <button class="subtab-btn active" data-subtab="report-faulty">Faulty Equipment & Downtime Audit</button>
-          <button class="subtab-btn" data-subtab="report-sources">Root Infrastructure & SPOF Analysis</button>
-          <button class="subtab-btn" data-subtab="report-all-assets">Complete Equipment Inventory</button>
+          <button class="subtab-btn active" data-subtab="report-faulty">Faults & downtime</button>
+          <button class="subtab-btn" data-subtab="report-sources">Dependency impact</button>
+          <button class="subtab-btn" data-subtab="report-all-assets">All equipment</button>
         </div>
 
         <!-- Subtab 1: Faulty Equipment -->
         <div id="report-faulty" class="subtab-content active">
           <div class="filter-controls">
-            <label for="select-faulty-sort">Sort Order (Merge Sort):</label>
+            <label for="select-faulty-sort">Sort by</label>
             <select id="select-faulty-sort">
               <option value="downtime">Total Accumulated Downtime (Descending)</option>
               <option value="faults">Total Fault Count (Descending)</option>
@@ -310,10 +325,10 @@
                   <th>Asset Code</th>
                   <th>Equipment Name</th>
                   <th>Location</th>
-                  <th>Direct Dependents (Out-Degree)</th>
-                  <th>Inbound Inputs (In-Degree)</th>
-                  <th>Total Blast Radius</th>
-                  <th>Criticality Status</th>
+                  <th>Direct dependents</th>
+                  <th>Incoming connections</th>
+                  <th>Total affected assets</th>
+                  <th>Impact level</th>
                 </tr>
               </thead>
               <tbody id="sources-report-body">
@@ -353,18 +368,18 @@
       <section class="panel-card full-width">
         <div class="panel-head">
           <div>
-            <h3>AVL Tree Calibration Compliance Schedule</h3>
-            <p class="panel-desc">Indexed by next_calibration_due date. Guaranteed O(log N + K) range queries via self-balancing AVL binary search tree.</p>
+            <h3>Calibration schedule</h3>
+            <p class="panel-desc">See which instruments are due for calibration and filter the schedule by time range. <span class="tech-note">Self-balancing AVL Tree range index</span></p>
           </div>
           <button id="btn-export-calib-csv" class="btn btn-sm btn-primary">Export Calibration CSV</button>
         </div>
 
         <div class="filter-controls">
-          <label>Query Range (Days):</label>
+          <label>Due within (days):</label>
           <input type="number" id="calib-start-range" value="0" style="width: 90px;">
           <span>to</span>
           <input type="number" id="calib-end-range" value="60" style="width: 90px;">
-          <button id="btn-query-calib" class="btn btn-sm btn-secondary">Filter Range Query</button>
+          <button id="btn-query-calib" class="btn btn-sm btn-secondary">Apply range</button>
           <button id="btn-all-calib" class="btn btn-sm btn-ghost">Show All Records</button>
         </div>
 
@@ -389,8 +404,8 @@
   </main>
 
   <footer class="app-footer">
-    <div>VIT Pune | Department of Information Technology | Semester 3 DSA Course Project (Group 8)</div>
-    <div class="footer-meta">Backend: 100% Custom C++ Data Structures (No STL Containers) | Transport: WinSock2 HTTP</div>
+    <div>VIT Pune · Department of Information Technology · Group 8</div>
+    <div class="footer-meta">Course project · Custom C++ data structures · WinSock2 HTTP</div>
   </footer>
 
   <script src="app.js"></script>

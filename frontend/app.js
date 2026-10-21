@@ -414,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.beginPath();
       ctx.moveTo(fromNode.x, fromNode.y);
       ctx.lineTo(toNode.x, toNode.y);
-      ctx.strokeStyle = isAffectedEdge ? '#ef4444' : '#253553';
+      ctx.strokeStyle = isAffectedEdge ? '#b93832' : '#c9d2cc';
       ctx.lineWidth = isAffectedEdge ? 3 : 1.5;
       if (isAffectedEdge) {
         ctx.setLineDash([6, 4]);
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#ef4444' : '#475569');
+      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#b93832' : '#98a69e');
     });
 
     // 2. Draw nodes
@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isFailed || isAffected) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius + 8 + Math.sin(animProgress) * 4, 0, 2 * Math.PI);
-        ctx.fillStyle = isFailed ? 'rgba(239, 68, 68, 0.22)' : 'rgba(245, 158, 11, 0.18)';
+        ctx.fillStyle = isFailed ? 'rgba(185, 56, 50, 0.16)' : 'rgba(169, 105, 23, 0.14)';
         ctx.fill();
       }
 
@@ -444,13 +444,13 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
 
       if (isFailed) {
-        ctx.fillStyle = '#ef4444';
+        ctx.fillStyle = '#b93832';
       } else if (isAffected) {
-        ctx.fillStyle = '#f59e0b';
+        ctx.fillStyle = '#a96917';
       } else if (isSource) {
-        ctx.fillStyle = '#9333ea';
+        ctx.fillStyle = '#76528e';
       } else {
-        ctx.fillStyle = '#0284c7';
+        ctx.fillStyle = '#147d70';
       }
       ctx.fill();
 
@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.textBaseline = 'middle';
       ctx.fillText(node.id, node.x, node.y);
 
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = '#53645d';
       ctx.font = '9px sans-serif';
       ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 12);
     });
