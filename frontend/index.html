@@ -291,13 +291,20 @@
             </div>
           </div>
 
-          <div class="cards-grid" style="margin-top: 1.25rem;">
-            <div class="panel-card">
+          <div class="cards-grid" style="margin-top: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+            <div class="panel-card" data-dsa="Graph BFS Transitive Impact">
               <h4>Blast Radius Simulation Result</h4>
               <p class="panel-desc">Click any node above to calculate its transitive impact.</p>
               <div id="blast-simulation-result" class="code-box">
                 Select an equipment node on the canvas to evaluate its downstream dependents.
               </div>
+            </div>
+
+            <!-- Single Points of Failure (SPOF) Vulnerability List -->
+            <div class="panel-card" data-dsa="Graph In/Out-Degree Analysis & BFS Reachability">
+              <h4>Single Points of Failure (SPOFs)</h4>
+              <p class="panel-desc">Root infrastructure equipment with high downstream impact.</p>
+              <div id="spof-summary-list" class="spof-container" style="margin-top: 0.75rem;"></div>
             </div>
 
             <!-- Maintenance Safety Check (What-If Advisor) -->

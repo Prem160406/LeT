@@ -24,10 +24,15 @@ struct UndoRecord {
     double deviation;
     int severity;
     std::string description;
+    int daysOverdue;
+    double riskScore;
+    int blastRadiusCount;
+    double blastMultiplier;
 
     UndoRecord();
     UndoRecord(UndoActionType t, const std::string& aCode, const std::string& tId = "",
-               long long ts = 0, double dev = 0.0, int sev = 1, const std::string& desc = "");
+               long long ts = 0, double dev = 0.0, int sev = 1, const std::string& desc = "",
+               int overdue = 0, double risk = 0.0, int blastCount = 0, double blastMult = 1.0);
 };
 
 /**

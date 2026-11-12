@@ -737,6 +737,19 @@ void HttpServer::start() {
                     << tier << "\",\""
                     << rec << "\"\r\n";
             }
+        } else if (type == "all-assets" || type == "assets") {
+            csv << "Asset Code,Equipment Name,Supplier,Location,Total Faults,Total Downtime (Hours),Next Calibration Due\r\n";
+            CustomArray<Asset*> all;
+            engine.getAllAssets(all);
+            for (size_t i = 0; i < all.size(); ++i) {
+                csv << "\"" << all[i]->assetCode << "\",\""
+                    << all[i]->name << "\",\""
+                    << (all[i]->supplier.empty() ? "Standard Lab Corp" : all[i]->supplier) << "\",\""
+                    << all[i]->location << "\","
+                    << all[i]->totalFaultCount << ","
+                    << all[i]->totalDowntimeHours << ","
+                    << all[i]->nextCalibrationDue << "\r\n";
+            }
         } else {
             // Default: Faulty equipment report
             csv << "Asset Code,Equipment Name,Location,Total Faults,Total Downtime (Hours),Latest Deviation,Latest Drift Velocity,Blast Radius (Affected Machines),Next Calibration Due\r\n";

@@ -17,19 +17,16 @@
  * @brief Core Pipeline Engine coordinating all 8 data structures.
  * 
  * Implemented Scope (70%):
- * - Steps 1-4 fully wired:
+ * - Complete 5-Step Pipeline fully wired:
  *   1. Incoming reports buffer in CircularQueue.
  *   2. Target asset resolved in HashTable (O(1)) and appended to its DoublyLinkedList.
  *   3. Drift rate computed from recent history nodes: Delta(Dev) / Delta(Time).
- *   4. Risk Score computed and task prioritized in Max-Heap.
- * - UndoStack rollback for all state changes.
- * - Graph BFS/DFS available standalone.
- * - MergeSort available standalone.
- * 
- * Stubbed Scope (30% Handoff Safety):
- * - Step 5 (Blast radius factored into live risk score) clearly stubbed with specifications.
- * - Compliance report generation using MergeSort clearly stubbed.
- * - Calibration schedule window querying clearly stubbed.
+ *   4. Base Risk Score computed from Severity, Overdue, and Drift.
+ *   5. Blast-Radius multiplier dynamically applied via Graph BFS reachability.
+ * - Max-Heap priority queue maintains live emergency triage order.
+ * - UndoStack rollback for all state changes (LIFO).
+ * - AVLTree indexes equipment calibration due dates for fast range queries.
+ * - MergeSort performs stable O(N log N) compliance ranking.
  */
 class Engine {
 private:

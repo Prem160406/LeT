@@ -2,12 +2,15 @@
 
 UndoRecord::UndoRecord()
     : type(UNDO_ASSET_REGISTRATION), assetCode(""), taskId(""),
-      timestamp(0), deviation(0.0), severity(1), description("") {}
+      timestamp(0), deviation(0.0), severity(1), description(""),
+      daysOverdue(0), riskScore(0.0), blastRadiusCount(0), blastMultiplier(1.0) {}
 
 UndoRecord::UndoRecord(UndoActionType t, const std::string& aCode, const std::string& tId,
-                       long long ts, double dev, int sev, const std::string& desc)
+                       long long ts, double dev, int sev, const std::string& desc,
+                       int overdue, double risk, int blastCount, double blastMult)
     : type(t), assetCode(aCode), taskId(tId), timestamp(ts),
-      deviation(dev), severity(sev), description(desc) {}
+      deviation(dev), severity(sev), description(desc),
+      daysOverdue(overdue), riskScore(risk), blastRadiusCount(blastCount), blastMultiplier(blastMult) {}
 
 UndoStack::UndoStack() : topNode(nullptr), count(0) {}
 

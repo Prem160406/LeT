@@ -142,7 +142,8 @@ bool Engine::dispatchHighestUrgencyTask(TriageTask& outTask) {
 
     // Push to Undo Stack for rollback
     UndoRecord rec(UNDO_TRIAGE_DISPATCH, outTask.assetCode, outTask.taskId,
-                   outTask.timestamp, 0.0, outTask.severity, outTask.description);
+                   outTask.timestamp, outTask.driftVelocity, outTask.severity, outTask.description,
+                   outTask.daysOverdue, outTask.riskScore, outTask.blastRadiusCount, outTask.blastMultiplier);
     undoManager.push(rec);
 
     return true;
@@ -184,16 +185,13 @@ bool Engine::rollbackLastAction() {
             return true;
         }
         case UNDO_TRIAGE_DISPATCH: {
-            // Restore dispatched task back into triage heap
+            // Restore dispatched task back into triage heap with exact prior state
             Asset* a = assetRegistry.find(rec.assetCode);
             std::string name = a ? a->name : "Unknown";
-            double drift = 0.0;
-            if (a && a->history->getLatestEntry()) {
-                drift = a->history->getLatestEntry()->computedDrift;
-            }
-            double risk = MaxHeap::computeRiskScore(rec.severity, 0, drift);
             TriageTask restoredTask(rec.taskId, rec.assetCode, name, rec.severity,
-                                   0, drift, risk, rec.timestamp, rec.description);
+                                   rec.daysOverdue, rec.deviation, rec.riskScore,
+                                   rec.timestamp, rec.description,
+                                   rec.blastRadiusCount, rec.blastMultiplier);
             triageQueue.insert(restoredTask);
             return true;
         }
@@ -205,36 +203,6 @@ size_t Engine::getUndoStackDepth() const {
     return undoManager.size();
 }
 
-// =============================================================================
-// DELIBERATELY STUBBED ITEMS (HANDOFF SAFETY REQUIREMENTS)
-// =============================================================================
-
-/**
- * ============================================================================
- * [HANDOFF STUB 1] Pipeline Step 5: Blast-Radius Multiplier in Fault Prioritization
- * ============================================================================
- * (a) INPUTS / OUTPUTS:
- *     - Inputs:  const std::string& assetCode (Primary key of failed asset)
- *     - Outputs: double blastMultiplier (Weight multiplier >= 1.0)
- *
- * (b) FUNCTIONS & STRUCTURES CALLED:
- *     - dependencyGraph.bfs(assetCode, reachableAssets) [src/Graph.cpp]
- *     - reachableAssets.size() [include/Common.h]
- *
- * (c) FINALIZED DESIGN DECISION:
- *     - When a critical fault occurs (severity >= 4), the live triage risk score
- *       must be augmented by:
- *           EffectiveRisk = BaseRisk * (1.0 + 0.20 * dependentCount)
- *     - In this 70% milestone, the Graph and BFS/DFS are fully implemented and
- *       tested standalone, but NOT yet injected into processNextBufferReport()
- *       to keep pipeline steps 1-4 isolated and cleanly verified.
- *
- * (d) EXACT NEXT ACTION FOR RESUMING DEVELOPER:
- *     1. Uncomment the BFS call below: dependencyGraph.bfs(assetCode, affected);
- *     2. In processNextBufferReport(), multiply riskScore by calculateBlastRadiusFactor(targetAsset->assetCode).
- *     3. Recompile and verify via `main.cpp` demo suite.
- * ============================================================================
- */
 // =============================================================================
 // PIPELINE STEP 5 & ADVANCED REPORT GENERATION IMPLEMENTATIONS
 // =============================================================================

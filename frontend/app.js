@@ -698,6 +698,8 @@ document.addEventListener('DOMContentLoaded', () => {
       let type = 'faulty';
       if (state.activeSubtab === 'report-sources') type = 'sources';
       else if (state.activeSubtab === 'report-suppliers') type = 'suppliers';
+      else if (state.activeSubtab === 'report-calib-subtab') type = 'calibrations';
+      else if (state.activeSubtab === 'report-all-assets') type = 'all-assets';
       window.location.href = `/api/reports/export-csv?type=${type}`;
     });
   }
