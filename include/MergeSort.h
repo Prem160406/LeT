@@ -17,6 +17,7 @@ enum SortCriterion {
 /**
  * @brief Standalone Merge Sort implementation running strictly in O(N log N) time.
  * Used for generating compliance reports by sorting assets by downtime, fault count, etc.
+ * Stable: records with equal sort keys retain their original relative order.
  * 
  * Implemented 100% from scratch with zero STL sort dependencies.
  */
@@ -34,6 +35,7 @@ public:
      * 
      * Time Complexity: O(N log N) in all cases (worst, average, best).
      * Space Complexity: O(N) auxiliary buffer for merging subarrays.
+     * Stability: equal-key assets retain their original input order.
      * 
      * @param arr Array of pointers to Asset objects.
      * @param count Number of elements in the array.
