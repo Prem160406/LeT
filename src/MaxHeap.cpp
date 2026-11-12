@@ -210,6 +210,73 @@ bool MaxHeap::extractMax(TriageTask& outTask) {
 }
 
 /**
+ * Time Complexity: O(log N).
+ * Updates risk score at specified index and sifts up towards root.
+ */
+bool MaxHeap::increaseKey(size_t index, double newRiskScore) {
+    if (index >= count) {
+        return false;
+    }
+    if (newRiskScore < data[index].riskScore) {
+        return false; // Cannot decrease key via increaseKey
+    }
+    data[index].riskScore = newRiskScore;
+    siftUp(index);
+    return true;
+}
+
+/**
+ * Time Complexity: O(log N).
+ * Updates risk score at specified index and sifts down towards leaves.
+ */
+bool MaxHeap::decreaseKey(size_t index, double newRiskScore) {
+    if (index >= count) {
+        return false;
+    }
+    if (newRiskScore > data[index].riskScore) {
+        return false; // Cannot increase key via decreaseKey
+    }
+    data[index].riskScore = newRiskScore;
+    siftDown(index);
+    return true;
+}
+
+/**
+ * Time Complexity: O(N) linear search.
+ */
+bool MaxHeap::findTaskIndex(const std::string& taskId, size_t& outIndex) const {
+    for (size_t i = 0; i < count; ++i) {
+        if (data[i].taskId == taskId) {
+            outIndex = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Time Complexity: O(N) search + O(log N) siftUp.
+ */
+bool MaxHeap::increaseKeyByTaskId(const std::string& taskId, double newRiskScore) {
+    size_t idx = 0;
+    if (!findTaskIndex(taskId, idx)) {
+        return false;
+    }
+    return increaseKey(idx, newRiskScore);
+}
+
+/**
+ * Time Complexity: O(N) search + O(log N) siftDown.
+ */
+bool MaxHeap::decreaseKeyByTaskId(const std::string& taskId, double newRiskScore) {
+    size_t idx = 0;
+    if (!findTaskIndex(taskId, idx)) {
+        return false;
+    }
+    return decreaseKey(idx, newRiskScore);
+}
+
+/**
  * Time Complexity: O(N) to find + O(log N) to restore.
  */
 bool MaxHeap::removeByTaskId(const std::string& taskId) {
