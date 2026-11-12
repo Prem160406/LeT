@@ -171,3 +171,61 @@ void HashTable::getAllAssets(CustomArray<Asset*>& outAssets) {
         }
     }
 }
+
+/**
+ * Time Complexity: O(B + N) where B is bucket count, N is element count.
+ * Evaluates bucket array in a single traversal, computing occupied buckets,
+ * collisions, max chain, and average chain among occupied buckets.
+ */
+HashStats HashTable::getStats() const {
+    HashStats stats;
+    stats.totalElements = totalElements;
+    stats.bucketCount = bucketCount;
+    stats.occupiedBuckets = 0;
+    stats.totalCollisions = 0;
+    stats.maxChainLength = 0;
+    stats.averageChainLength = 0.0;
+    stats.loadFactor = loadFactor();
+
+    for (size_t i = 0; i < bucketCount; ++i) {
+        size_t chainLen = 0;
+        HashNode* curr = buckets[i];
+        while (curr != nullptr) {
+            ++chainLen;
+            curr = curr->next;
+        }
+        if (chainLen > 0) {
+            ++stats.occupiedBuckets;
+            stats.totalCollisions += (chainLen - 1);
+            if (chainLen > stats.maxChainLength) {
+                stats.maxChainLength = chainLen;
+            }
+        }
+    }
+
+    if (stats.occupiedBuckets > 0) {
+        stats.averageChainLength = static_cast<double>(totalElements) / static_cast<double>(stats.occupiedBuckets);
+    }
+
+    return stats;
+}
+
+size_t HashTable::getOccupiedBucketCount() const {
+    return getStats().occupiedBuckets;
+}
+
+size_t HashTable::getCollisionCount() const {
+    return getStats().totalCollisions;
+}
+
+size_t HashTable::getMaxChainLength() const {
+    return getStats().maxChainLength;
+}
+
+double HashTable::getAverageChainLength() const {
+    return getStats().averageChainLength;
+}
+
+size_t HashTable::getBucketCount() const {
+    return bucketCount;
+}
