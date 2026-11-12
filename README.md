@@ -1,6 +1,5 @@
 # Lab Operations, Emergency Fault Triage & Calibration Engine
 
-[![VIT Pune](https://img.shields.io/badge/VIT%20Pune-IT%20Dept%20(Sem%203)-blue.svg)](#)
 [![C++14](https://img.shields.io/badge/C%2B%2B-14-green.svg)](#)
 [![Data Structures](https://img.shields.io/badge/DSA-100%25%20From%20Scratch-orange.svg)](#)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20(MinGW)-lightgrey.svg)](#)
