@@ -36,12 +36,31 @@ private:
 
 public:
     explicit MaxHeap(size_t initialCapacity = 32);
+    
+    /**
+     * @brief Constructs a Max-Heap from an array of tasks in O(N) using Floyd's algorithm.
+     * @param tasks Pointer to array of triage tasks.
+     * @param n Number of tasks in the array.
+     */
+    MaxHeap(const TriageTask* tasks, size_t n);
+
     ~MaxHeap();
 
     MaxHeap(const MaxHeap& other);
     MaxHeap& operator=(const MaxHeap& other);
     MaxHeap(MaxHeap&& other) noexcept;
     MaxHeap& operator=(MaxHeap&& other) noexcept;
+
+    /**
+     * @brief Floyd's bottom-up heap construction on an array of tasks in O(N).
+     * Replaces existing heap contents with tasks organized in valid max-heap order.
+     */
+    void buildHeap(const TriageTask* tasks, size_t n);
+
+    /**
+     * @brief Floyd's bottom-up heap construction from a CustomArray in O(N).
+     */
+    void buildHeap(const CustomArray<TriageTask>& tasks);
 
     /**
      * @brief Inserts a new triage task into the heap.

@@ -186,6 +186,46 @@ void testMaxHeap() {
               << out2.taskId << " (" << out2.riskScore << ") -> "
               << out3.taskId << " (" << out3.riskScore << ") (PASS)" << std::endl;
     assert(out1.taskId == "T-B" && out2.taskId == "T-C" && out3.taskId == "T-A");
+
+    // [Test 4.4] Floyd's O(N) buildHeap() vs Repeated O(log N) Insertion
+    TriageTask batch[6] = {
+        TriageTask("T-1", "LAB-01", "Equip 1", 2, 1, 0.0, 15.0, 1000, "Low"),
+        TriageTask("T-2", "LAB-02", "Equip 2", 5, 8, 2.0, 80.0, 1001, "Critical"),
+        TriageTask("T-3", "LAB-03", "Equip 3", 4, 3, 1.0, 42.0, 1002, "High"),
+        TriageTask("T-4", "LAB-04", "Equip 4", 5, 12, 3.5, 95.0, 1003, "Catastrophic"),
+        TriageTask("T-5", "LAB-05", "Equip 5", 3, 2, 0.5, 23.0, 1004, "Medium"),
+        TriageTask("T-6", "LAB-06", "Equip 6", 4, 6, 1.5, 60.0, 1005, "Severe")
+    };
+
+    // Build via repeated insertion
+    MaxHeap heapInsert;
+    for (size_t i = 0; i < 6; ++i) {
+        heapInsert.insert(batch[i]);
+    }
+
+    // Build via Floyd's O(N) bottom-up algorithm
+    MaxHeap heapFloyd(batch, 6);
+
+    assert(heapFloyd.size() == 6);
+    assert(heapInsert.size() == 6);
+
+    // Root element must match highest risk task (95.0) in both
+    TriageTask topInsert, topFloyd;
+    assert(heapInsert.peekMax(topInsert));
+    assert(heapFloyd.peekMax(topFloyd));
+    assert(topInsert.riskScore == 95.0);
+    assert(topFloyd.riskScore == 95.0);
+    assert(topInsert.taskId == topFloyd.taskId);
+
+    // Both heaps must extract elements in the identical descending priority order
+    for (int i = 0; i < 6; ++i) {
+        TriageTask taskInsert, taskFloyd;
+        assert(heapInsert.extractMax(taskInsert));
+        assert(heapFloyd.extractMax(taskFloyd));
+        assert(taskInsert.riskScore == taskFloyd.riskScore);
+        assert(taskInsert.taskId == taskFloyd.taskId);
+    }
+    std::cout << "[Test 4.4] Floyd's O(N) buildHeap() verified against repeated O(log N) insertion: PASS" << std::endl;
 }
 
 // -----------------------------------------------------------------------------

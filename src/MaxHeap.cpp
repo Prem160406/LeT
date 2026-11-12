@@ -6,6 +6,12 @@ MaxHeap::MaxHeap(size_t initialCapacity)
     data = new TriageTask[capacity];
 }
 
+MaxHeap::MaxHeap(const TriageTask* tasks, size_t n)
+    : capacity(n < 8 ? 8 : n), count(0) {
+    data = new TriageTask[capacity];
+    buildHeap(tasks, n);
+}
+
 MaxHeap::~MaxHeap() {
     delete[] data;
     data = nullptr;
@@ -100,6 +106,63 @@ void MaxHeap::siftDown(size_t index) {
             index = largest;
         } else {
             break;
+        }
+    }
+}
+
+/**
+ * Time Complexity: O(N) using Floyd's bottom-up heap construction algorithm.
+ * Copies tasks into contiguous memory and sifts down from the last internal node
+ * (count / 2 - 1) to the root (0).
+ */
+void MaxHeap::buildHeap(const TriageTask* tasks, size_t n) {
+    if (tasks == nullptr || n == 0) {
+        count = 0;
+        return;
+    }
+
+    if (n > capacity) {
+        delete[] data;
+        capacity = n < 8 ? 8 : n;
+        data = new TriageTask[capacity];
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        data[i] = tasks[i];
+    }
+    count = n;
+
+    // Floyd's algorithm: Start at the parent of the last element and siftDown.
+    // Leaves at indices [count/2 .. count-1] already satisfy the heap property trivially.
+    if (count >= 2) {
+        for (int i = static_cast<int>((count / 2) - 1); i >= 0; --i) {
+            siftDown(static_cast<size_t>(i));
+        }
+    }
+}
+
+/**
+ * Time Complexity: O(N) from CustomArray.
+ */
+void MaxHeap::buildHeap(const CustomArray<TriageTask>& tasks) {
+    if (tasks.empty()) {
+        count = 0;
+        return;
+    }
+    size_t n = tasks.size();
+    if (n > capacity) {
+        delete[] data;
+        capacity = n < 8 ? 8 : n;
+        data = new TriageTask[capacity];
+    }
+    for (size_t i = 0; i < n; ++i) {
+        data[i] = tasks[i];
+    }
+    count = n;
+
+    if (count >= 2) {
+        for (int i = static_cast<int>((count / 2) - 1); i >= 0; --i) {
+            siftDown(static_cast<size_t>(i));
         }
     }
 }
