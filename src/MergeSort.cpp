@@ -17,7 +17,7 @@ bool MergeSort::compare(const Asset* a, const Asset* b, SortCriterion criterion)
 
 /**
  * Time Complexity: O(M) where M = right - left + 1.
- * Merges two sorted subarrays into temp and copies back into arr.
+ * Merges two sorted subarrays stably into temp and copies back into arr.
  */
 void MergeSort::merge(Asset** arr, size_t left, size_t mid, size_t right,
                       Asset** temp, SortCriterion criterion) {
@@ -26,7 +26,9 @@ void MergeSort::merge(Asset** arr, size_t left, size_t mid, size_t right,
     size_t k = left;
 
     while (i <= mid && j <= right) {
-        if (compare(arr[i], arr[j], criterion)) {
+        // Take from the left half unless the right item is strictly smaller.
+        // When keys are equal, choosing the left item preserves original order.
+        if (!compare(arr[j], arr[i], criterion)) {
             temp[k++] = arr[i++];
         } else {
             temp[k++] = arr[j++];
