@@ -18,6 +18,23 @@ struct HashNode {
 };
 
 /**
+ * @brief Diagnostic statistics for collision distribution and table occupancy.
+ */
+struct HashStats {
+    size_t totalElements;
+    size_t bucketCount;
+    size_t occupiedBuckets;
+    size_t totalCollisions;
+    size_t maxChainLength;
+    double averageChainLength; // Average among occupied buckets
+    double loadFactor;
+
+    HashStats()
+        : totalElements(0), bucketCount(0), occupiedBuckets(0),
+          totalCollisions(0), maxChainLength(0), averageChainLength(0.0), loadFactor(0.0) {}
+};
+
+/**
  * @brief Hash Table built 100% from scratch with Separate Chaining collision handling.
  * 
  * Collision Handling Strategy: Separate Chaining via custom Singly Linked List.
@@ -109,6 +126,37 @@ public:
      * Time Complexity: O(N + B) where B is bucket count.
      */
     void getAllAssets(CustomArray<Asset*>& outAssets);
+
+    /**
+     * @brief Computes comprehensive collision and occupancy statistics.
+     * Time Complexity: O(B + N) where B is bucket count, N is element count.
+     */
+    HashStats getStats() const;
+
+    /**
+     * @brief Returns the number of buckets that currently contain at least one node.
+     */
+    size_t getOccupiedBucketCount() const;
+
+    /**
+     * @brief Returns total number of collisions across all chains (totalElements - occupiedBuckets).
+     */
+    size_t getCollisionCount() const;
+
+    /**
+     * @brief Returns length of the longest separate-chaining bucket list.
+     */
+    size_t getMaxChainLength() const;
+
+    /**
+     * @brief Returns average chain length among occupied buckets (totalElements / occupiedBuckets).
+     */
+    double getAverageChainLength() const;
+
+    /**
+     * @brief Returns current total bucket capacity.
+     */
+    size_t getBucketCount() const;
 };
 
 #endif // HASH_TABLE_H

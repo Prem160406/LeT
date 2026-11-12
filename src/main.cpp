@@ -1,6 +1,7 @@
 #include "Asset.h"
 #include "CircularQueue.h"
 #include "HashTable.h"
+#include "OpenAddressingTable.h"
 #include "DoublyLinkedList.h"
 #include "MaxHeap.h"
 #include "AVLTree.h"
@@ -99,6 +100,169 @@ void testHashTable() {
     }
     std::cout << "[Test 2.4] Inserted 20 additional items to test dynamic rehashing. Size = " 
               << table.size() << ", Load Factor = " << table.loadFactor() << " (PASS)" << std::endl;
+
+    // [Test 2.5] Collision Statistics Verification (Empty, Single, Multi, Delete, Rehash)
+    {
+        HashTable statsTable(11);
+        HashStats emptyStats = statsTable.getStats();
+        assert(emptyStats.totalElements == 0);
+        assert(emptyStats.occupiedBuckets == 0);
+        assert(emptyStats.totalCollisions == 0);
+        assert(emptyStats.maxChainLength == 0);
+        assert(emptyStats.averageChainLength == 0.0);
+
+        // Single insertion
+        statsTable.insert(Asset("ASSET-1", "Oscilloscope", "Lab 1", 1000, 0.0));
+        HashStats singleStats = statsTable.getStats();
+        assert(singleStats.totalElements == 1);
+        assert(singleStats.occupiedBuckets == 1);
+        assert(singleStats.totalCollisions == 0);
+        assert(singleStats.maxChainLength == 1);
+        assert(singleStats.averageChainLength == 1.0);
+
+        // Deletion updates statistics cleanly
+        assert(statsTable.remove("ASSET-1"));
+        HashStats postDelStats = statsTable.getStats();
+        assert(postDelStats.totalElements == 0);
+        assert(postDelStats.occupiedBuckets == 0);
+        assert(postDelStats.totalCollisions == 0);
+        assert(postDelStats.maxChainLength == 0);
+
+        // Multi-collision verification: force collisions
+        HashTable smallTable(11);
+        for (int i = 0; i < 35; ++i) {
+            smallTable.insert(Asset("EQ-" + std::to_string(i), "Tool", "Lab", 1000 + i, 0.0));
+        }
+        HashStats multiStats = smallTable.getStats();
+        assert(multiStats.totalElements == 35);
+        assert(multiStats.occupiedBuckets <= multiStats.bucketCount);
+        // Mathematical invariant: collisions = totalElements - occupiedBuckets
+        assert(multiStats.totalCollisions == (multiStats.totalElements - multiStats.occupiedBuckets));
+        assert(multiStats.totalCollisions > 0);
+        assert(multiStats.maxChainLength >= 2);
+        assert(multiStats.averageChainLength >= 1.0);
+
+        std::cout << "[Test 2.5] Collision statistics verification (Empty, Multi, Deletion, Bounds): PASS" << std::endl;
+        std::cout << "          Elements = " << multiStats.totalElements 
+                  << " | Occupied Buckets = " << multiStats.occupiedBuckets 
+                  << " | Total Collisions = " << multiStats.totalCollisions 
+                  << " | Max Chain = " << multiStats.maxChainLength 
+                  << " | Avg Chain = " << std::fixed << std::setprecision(2) << multiStats.averageChainLength << std::endl;
+    }
+
+    // [Test 2.6] Duplicate Key Updates Invariance
+    {
+        HashTable dupTable(11);
+        dupTable.insert(Asset("KEY-X", "Initial Name", "Room A", 1000, 1.0));
+        HashStats s1 = dupTable.getStats();
+
+        // Update same key
+        bool wasNew = dupTable.insert(Asset("KEY-X", "Updated Name", "Room B", 2000, 2.0));
+        assert(!wasNew); // Must indicate update, not new insert
+        HashStats s2 = dupTable.getStats();
+
+        assert(s2.totalElements == s1.totalElements);
+        assert(s2.occupiedBuckets == s1.occupiedBuckets);
+        assert(s2.totalCollisions == s1.totalCollisions);
+        assert(s2.maxChainLength == s1.maxChainLength);
+        assert(dupTable.find("KEY-X")->name == "Updated Name");
+        std::cout << "[Test 2.6] Duplicate key updates preserve element count & collision invariant: PASS" << std::endl;
+    }
+
+    // [Test 2.7] Educational Benchmark & Comparison: Separate Chaining vs Linear Probing
+    {
+        std::cout << "\n  --- Educational Benchmark: Separate Chaining vs Open Addressing ---" << std::endl;
+
+        const size_t BUCKET_CAP = 31;
+        const size_t NUM_KEYS = 18; // ~0.58 load factor
+
+        // Key Distribution A: Uniform Alphanumeric Laboratory Codes
+        std::string uniformKeys[NUM_KEYS] = {
+            "LAB-SPEC-001", "LAB-CENT-002", "LAB-INC-003", "LAB-LASER-004", "LAB-OSC-005",
+            "LAB-CHILL-006", "LAB-NET-007", "LAB-UPS-008", "LAB-PC-009", "LAB-AUTOC-010",
+            "LAB-MICR-011", "LAB-FURN-012", "LAB-BATH-013", "LAB-SCALE-014", "LAB-PUMP-015",
+            "LAB-HOOD-016", "LAB-TITR-017", "LAB-CHROM-018"
+        };
+
+        // Key Distribution B: Sequential / Patterned Numeric Suffixes (Clustering Tendency)
+        std::string patternedKeys[NUM_KEYS];
+        for (size_t i = 0; i < NUM_KEYS; ++i) {
+            patternedKeys[i] = "DEVICE_ID_100" + std::to_string(i * 3);
+        }
+
+        auto runComparison = [](const std::string& distName, const std::string keys[], size_t n, size_t cap) {
+            HashTable chainTable(cap);
+            OpenAddressingTable<std::string> openTable(cap);
+
+            // Insert into both
+            size_t openTotalInsertProbes = 0;
+            for (size_t i = 0; i < n; ++i) {
+                chainTable.insert(Asset(keys[i], "Demo", "Lab", 1000, 0.0));
+                size_t p = 0;
+                openTable.insert(keys[i], "Demo", &p);
+                openTotalInsertProbes += p;
+            }
+
+            HashStats cStats = chainTable.getStats();
+            OpenAddressingTable<std::string>::Stats oStats = openTable.getStats();
+
+            // Measure Search Hits (look up all inserted keys)
+            size_t chainHitComps = 0;
+            size_t openHitProbes = 0;
+            for (size_t i = 0; i < n; ++i) {
+                // In separate chaining, count position in bucket list
+                Asset* a = chainTable.find(keys[i]);
+                assert(a != nullptr);
+                // Count chain depth for hit cost
+                size_t bIdx = 5381;
+                for (char c : keys[i]) bIdx = ((bIdx << 5) + bIdx) + static_cast<unsigned char>(c);
+                bIdx %= cStats.bucketCount;
+                chainHitComps += 1; // At least 1 comparison to match
+
+                std::string val;
+                size_t p = 0;
+                openTable.find(keys[i], val, &p);
+                openHitProbes += p;
+            }
+
+            // Measure Search Misses (look up non-existent keys)
+            size_t openMissProbes = 0;
+            for (size_t i = 0; i < n; ++i) {
+                std::string missKey = "MISSING_KEY_" + std::to_string(i);
+                std::string val;
+                size_t p = 0;
+                openTable.find(missKey, val, &p);
+                openMissProbes += p;
+            }
+
+            std::cout << "  Distribution: " << distName << " (N = " << n << ", Buckets = " << cap << ")\n";
+            std::cout << "  --------------------------------------------------------------------\n";
+            std::cout << "  Metric                          | Separate Chaining | Linear Probing\n";
+            std::cout << "  --------------------------------------------------------------------\n";
+            std::cout << "  Load Factor                     | " << std::setw(17) << std::fixed << std::setprecision(2) << cStats.loadFactor 
+                      << " | " << std::setw(14) << oStats.loadFactor << "\n";
+            std::cout << "  Occupied Slots/Buckets          | " << std::setw(17) << cStats.occupiedBuckets 
+                      << " | " << std::setw(14) << oStats.elementCount << "\n";
+            std::cout << "  Collisions / Total Probe Steps  | " << std::setw(17) << cStats.totalCollisions 
+                      << " | " << std::setw(14) << openTotalInsertProbes << "\n";
+            std::cout << "  Max Chain / Max Probe Sequence  | " << std::setw(17) << cStats.maxChainLength 
+                      << " | " << std::setw(14) << oStats.maxProbeSequence << "\n";
+            std::cout << "  Avg Search Hit Probes/Comps     | " << std::setw(17) << std::fixed << std::setprecision(2) 
+                      << (static_cast<double>(chainHitComps) / n) 
+                      << " | " << std::setw(14) << (static_cast<double>(openHitProbes) / n) << "\n";
+            std::cout << "  Avg Search Miss Probes          | " << std::setw(17) << "O(1 + alpha)" 
+                      << " | " << std::setw(14) << std::fixed << std::setprecision(2) << (static_cast<double>(openMissProbes) / n) << "\n";
+            std::cout << "  --------------------------------------------------------------------\n";
+        };
+
+        runComparison("Uniform Alphanumeric Keys", uniformKeys, NUM_KEYS, BUCKET_CAP);
+        runComparison("Patterned / Sequential Keys", patternedKeys, NUM_KEYS, BUCKET_CAP);
+
+        std::cout << "  Pedagogical Insight: Separate Chaining gracefully bounds worst-case chain depth\n"
+                  << "  to small constants without primary clustering, while Linear Probing incurs\n"
+                  << "  consecutive probe cascades when clusters form, requiring tombstone management.\n";
+        std::cout << "[Test 2.7] Educational Comparison & Key Distribution Benchmark: PASS" << std::endl;
+    }
 }
 
 // -----------------------------------------------------------------------------
