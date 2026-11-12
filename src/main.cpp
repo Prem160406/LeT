@@ -285,6 +285,21 @@ void testMergeSort() {
     assert(list[2]->assetCode == "LAB-01"); // 15.5h
     assert(list[3]->assetCode == "LAB-03"); // 5.0h
     std::cout << "[Test 7.3] Downtime sort verified: PASS" << std::endl;
+
+    // Stability test: equal keys must retain their original input order.
+    Asset stableA("STABLE-A", "Asset A", "Room 1", 30, 20.0);
+    Asset stableB("STABLE-B", "Asset B", "Room 2", 30, 20.0);
+    Asset stableC("STABLE-C", "Asset C", "Room 3", 30, 20.0);
+    CustomArray<Asset*> equalDowntime;
+    equalDowntime.push_back(&stableA);
+    equalDowntime.push_back(&stableB);
+    equalDowntime.push_back(&stableC);
+
+    MergeSort::sort(equalDowntime, SORT_BY_DOWNTIME_DESC);
+    assert(equalDowntime[0]->assetCode == "STABLE-A");
+    assert(equalDowntime[1]->assetCode == "STABLE-B");
+    assert(equalDowntime[2]->assetCode == "STABLE-C");
+    std::cout << "[Test 7.4] Stable sort preserves input order for equal keys: PASS" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
