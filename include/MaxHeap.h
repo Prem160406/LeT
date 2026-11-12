@@ -83,6 +83,51 @@ public:
     bool extractMax(TriageTask& outTask);
 
     /**
+     * @brief Increases the priority (risk score) of a task at a given heap index.
+     * Time Complexity: O(log N) via siftUp from index.
+     * @param index Array index of the task.
+     * @param newRiskScore New higher risk score.
+     * @return true if successfully increased, false if index is invalid or new score is lower.
+     */
+    bool increaseKey(size_t index, double newRiskScore);
+
+    /**
+     * @brief Decreases the priority (risk score) of a task at a given heap index.
+     * Time Complexity: O(log N) via siftDown from index.
+     * @param index Array index of the task.
+     * @param newRiskScore New lower risk score.
+     * @return true if successfully decreased, false if index is invalid or new score is higher.
+     */
+    bool decreaseKey(size_t index, double newRiskScore);
+
+    /**
+     * @brief Increases task priority by searching its taskId in the heap array.
+     * Time Complexity: O(N) search + O(log N) siftUp.
+     * @param taskId Unique identifier of the task.
+     * @param newRiskScore New higher risk score.
+     * @return true if task was found and priority increased.
+     */
+    bool increaseKeyByTaskId(const std::string& taskId, double newRiskScore);
+
+    /**
+     * @brief Decreases task priority by searching its taskId in the heap array.
+     * Time Complexity: O(N) search + O(log N) siftDown.
+     * @param taskId Unique identifier of the task.
+     * @param newRiskScore New lower risk score.
+     * @return true if task was found and priority decreased.
+     */
+    bool decreaseKeyByTaskId(const std::string& taskId, double newRiskScore);
+
+    /**
+     * @brief Searches for a task by taskId and returns its current array index.
+     * Time Complexity: O(N) linear scan.
+     * @param taskId Unique task ID.
+     * @param outIndex Output parameter receiving the found index.
+     * @return true if found, false otherwise.
+     */
+    bool findTaskIndex(const std::string& taskId, size_t& outIndex) const;
+
+    /**
      * @brief Removes a task by its taskId (used for undo rollback).
      * Time Complexity: O(N) linear search + O(log N) sift down/up.
      * @return true if task was found and removed.

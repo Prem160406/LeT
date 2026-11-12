@@ -226,6 +226,100 @@ void testMaxHeap() {
         assert(taskInsert.taskId == taskFloyd.taskId);
     }
     std::cout << "[Test 4.4] Floyd's O(N) buildHeap() verified against repeated O(log N) insertion: PASS" << std::endl;
+
+    // [Test 4.5] Edge Cases: Empty, Single Element, and Duplicate Priorities in buildHeap
+    {
+        MaxHeap emptyHeap;
+        emptyHeap.buildHeap(nullptr, 0);
+        assert(emptyHeap.empty() && emptyHeap.size() == 0);
+        TriageTask dummy;
+        assert(!emptyHeap.peekMax(dummy));
+
+        TriageTask single("S-1", "LAB-01", "Solo", 3, 0, 0.0, 50.0, 2000, "Single task");
+        MaxHeap singleHeap(&single, 1);
+        assert(singleHeap.size() == 1);
+        assert(singleHeap.peekMax(dummy) && dummy.taskId == "S-1" && dummy.riskScore == 50.0);
+
+        TriageTask dupes[4] = {
+            TriageTask("D-1", "LAB-01", "D1", 3, 0, 0.0, 40.0, 2001, "Dup 1"),
+            TriageTask("D-2", "LAB-02", "D2", 3, 0, 0.0, 40.0, 2002, "Dup 2"),
+            TriageTask("D-3", "LAB-03", "D3", 3, 0, 0.0, 40.0, 2003, "Dup 3"),
+            TriageTask("D-4", "LAB-04", "D4", 3, 0, 0.0, 40.0, 2004, "Dup 4")
+        };
+        MaxHeap dupeHeap(dupes, 4);
+        assert(dupeHeap.size() == 4);
+        for (int i = 0; i < 4; ++i) {
+            assert(dupeHeap.extractMax(dummy));
+            assert(dummy.riskScore == 40.0);
+        }
+        assert(dupeHeap.empty());
+        std::cout << "[Test 4.5] Edge Cases (Empty, Single-Element, Duplicate Priorities): PASS" << std::endl;
+    }
+
+    // [Test 4.6] Larger Input (20 items) Heap Invariant Verification
+    {
+        const size_t NUM_ITEMS = 20;
+        TriageTask largeBatch[NUM_ITEMS];
+        for (size_t i = 0; i < NUM_ITEMS; ++i) {
+            // Pseudo-random risk score generator
+            double risk = static_cast<double>((i * 37 + 13) % 100);
+            largeBatch[i] = TriageTask("LG-" + std::to_string(i), "LAB-X", "Equip", 1, 0, 0.0, risk, 3000 + i, "Batch task");
+        }
+
+        MaxHeap largeInsertHeap;
+        for (size_t i = 0; i < NUM_ITEMS; ++i) {
+            largeInsertHeap.insert(largeBatch[i]);
+        }
+
+        MaxHeap largeFloydHeap(largeBatch, NUM_ITEMS);
+        assert(largeFloydHeap.size() == NUM_ITEMS);
+
+        // Verify descending extraction sequence matches exactly
+        for (size_t i = 0; i < NUM_ITEMS; ++i) {
+            TriageTask fromInsert, fromFloyd;
+            assert(largeInsertHeap.extractMax(fromInsert));
+            assert(largeFloydHeap.extractMax(fromFloyd));
+            assert(fromInsert.riskScore == fromFloyd.riskScore);
+        }
+        std::cout << "[Test 4.6] Large Input (20 items) Invariant & Extraction Consistency: PASS" << std::endl;
+    }
+
+    // [Test 4.7] Priority Updates: increaseKey() and decreaseKey()
+    {
+        TriageTask prioTasks[4] = {
+            TriageTask("P-1", "LAB-01", "P1", 1, 1, 0.0, 10.0, 4001, "Low"),
+            TriageTask("P-2", "LAB-02", "P2", 2, 2, 0.0, 30.0, 4002, "Moderate"),
+            TriageTask("P-3", "LAB-03", "P3", 3, 3, 0.0, 50.0, 4003, "High"),
+            TriageTask("P-4", "LAB-04", "P4", 4, 4, 0.0, 70.0, 4004, "Critical")
+        };
+        MaxHeap pHeap(prioTasks, 4);
+
+        // Initially root is P-4 (70.0)
+        TriageTask top;
+        assert(pHeap.peekMax(top) && top.taskId == "P-4");
+
+        // Increase P-1 (initially 10.0) to 120.0 (highest in heap)
+        assert(pHeap.increaseKeyByTaskId("P-1", 120.0));
+        assert(pHeap.peekMax(top) && top.taskId == "P-1" && top.riskScore == 120.0);
+
+        // increaseKey with lower value must be rejected
+        assert(!pHeap.increaseKeyByTaskId("P-1", 50.0));
+
+        // Decrease P-1 from 120.0 down to 5.0 -> must sift down, root must revert to P-4 (70.0)
+        assert(pHeap.decreaseKeyByTaskId("P-1", 5.0));
+        assert(pHeap.peekMax(top) && top.taskId == "P-4" && top.riskScore == 70.0);
+
+        // decreaseKey with higher value must be rejected
+        assert(!pHeap.decreaseKeyByTaskId("P-4", 90.0));
+
+        // Direct index operations: increaseKey on index
+        size_t idx = 0;
+        assert(pHeap.findTaskIndex("P-1", idx));
+        assert(pHeap.increaseKey(idx, 85.0)); // becomes new root
+        assert(pHeap.peekMax(top) && top.taskId == "P-1" && top.riskScore == 85.0);
+
+        std::cout << "[Test 4.7] Priority Updates (increaseKey & decreaseKey with O(log N) Sift): PASS" << std::endl;
+    }
 }
 
 // -----------------------------------------------------------------------------
