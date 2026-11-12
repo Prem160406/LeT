@@ -27,13 +27,14 @@ MaxHeap::MaxHeap(const MaxHeap& other)
 
 MaxHeap& MaxHeap::operator=(const MaxHeap& other) {
     if (this != &other) {
+        TriageTask* newData = new TriageTask[other.capacity];
+        for (size_t i = 0; i < other.count; ++i) {
+            newData[i] = other.data[i];
+        }
         delete[] data;
+        data = newData;
         capacity = other.capacity;
         count = other.count;
-        data = new TriageTask[capacity];
-        for (size_t i = 0; i < count; ++i) {
-            data[i] = other.data[i];
-        }
     }
     return *this;
 }
@@ -122,9 +123,11 @@ void MaxHeap::buildHeap(const TriageTask* tasks, size_t n) {
     }
 
     if (n > capacity) {
+        size_t newCap = n < 8 ? 8 : n;
+        TriageTask* newData = new TriageTask[newCap];
         delete[] data;
-        capacity = n < 8 ? 8 : n;
-        data = new TriageTask[capacity];
+        data = newData;
+        capacity = newCap;
     }
 
     for (size_t i = 0; i < n; ++i) {
@@ -151,9 +154,11 @@ void MaxHeap::buildHeap(const CustomArray<TriageTask>& tasks) {
     }
     size_t n = tasks.size();
     if (n > capacity) {
+        size_t newCap = n < 8 ? 8 : n;
+        TriageTask* newData = new TriageTask[newCap];
         delete[] data;
-        capacity = n < 8 ? 8 : n;
-        data = new TriageTask[capacity];
+        data = newData;
+        capacity = newCap;
     }
     for (size_t i = 0; i < n; ++i) {
         data[i] = tasks[i];
