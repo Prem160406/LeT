@@ -115,6 +115,14 @@ AVLNode* AVLTree::findMinNode(AVLNode* node) const {
     return curr;
 }
 
+AVLNode* AVLTree::findMaxNode(AVLNode* node) const {
+    AVLNode* curr = node;
+    while (curr != nullptr && curr->right != nullptr) {
+        curr = curr->right;
+    }
+    return curr;
+}
+
 /**
  * Time Complexity: O(log N).
  * Locates node, removes it, and rebalances ancestral nodes up to root.
@@ -198,6 +206,96 @@ bool AVLTree::remove(long long dueDate, const std::string& assetCode) {
         --count;
     }
     return removed;
+}
+
+/**
+ * Time Complexity: O(log N).
+ * Traverses to the leftmost node in the AVL tree.
+ */
+bool AVLTree::findMin(CalibrationItem& outItem) const {
+    if (root == nullptr) {
+        return false;
+    }
+    AVLNode* minNode = findMinNode(root);
+    if (minNode != nullptr) {
+        outItem = minNode->item;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Time Complexity: O(log N).
+ * Traverses to the rightmost node in the AVL tree.
+ */
+bool AVLTree::findMax(CalibrationItem& outItem) const {
+    if (root == nullptr) {
+        return false;
+    }
+    AVLNode* maxNode = findMaxNode(root);
+    if (maxNode != nullptr) {
+        outItem = maxNode->item;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Time Complexity: O(log N).
+ * Finds smallest node strictly greater than target without requiring parent pointers.
+ */
+bool AVLTree::inorderSuccessor(const CalibrationItem& target, CalibrationItem& outSuccessor) const {
+    AVLNode* curr = root;
+    AVLNode* succ = nullptr;
+
+    while (curr != nullptr) {
+        if (target < curr->item) {
+            succ = curr;
+            curr = curr->left;
+        } else {
+            curr = curr->right;
+        }
+    }
+
+    if (succ != nullptr) {
+        outSuccessor = succ->item;
+        return true;
+    }
+    return false;
+}
+
+bool AVLTree::inorderSuccessor(long long dueDate, const std::string& assetCode, CalibrationItem& outSuccessor) const {
+    CalibrationItem target(dueDate, assetCode);
+    return inorderSuccessor(target, outSuccessor);
+}
+
+/**
+ * Time Complexity: O(log N).
+ * Finds largest node strictly less than target without requiring parent pointers.
+ */
+bool AVLTree::inorderPredecessor(const CalibrationItem& target, CalibrationItem& outPredecessor) const {
+    AVLNode* curr = root;
+    AVLNode* pred = nullptr;
+
+    while (curr != nullptr) {
+        if (curr->item < target) {
+            pred = curr;
+            curr = curr->right;
+        } else {
+            curr = curr->left;
+        }
+    }
+
+    if (pred != nullptr) {
+        outPredecessor = pred->item;
+        return true;
+    }
+    return false;
+}
+
+bool AVLTree::inorderPredecessor(long long dueDate, const std::string& assetCode, CalibrationItem& outPredecessor) const {
+    CalibrationItem target(dueDate, assetCode);
+    return inorderPredecessor(target, outPredecessor);
 }
 
 /**

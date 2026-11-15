@@ -522,6 +522,69 @@ void testAVLTree() {
     std::cout << "[Test 5.4] Range Query [Days 20 to 45] (O(log N + K)): Found " 
               << rangeResult.size() << " records (Expected: 4): " 
               << (rangeResult.size() == 4 ? "PASS" : "FAIL") << std::endl;
+
+    // [Test 5.5] findMin() and findMax() Verification
+    {
+        AVLTree emptyTree;
+        CalibrationItem outItem;
+        assert(!emptyTree.findMin(outItem));
+        assert(!emptyTree.findMax(outItem));
+
+        AVLTree singleTree;
+        singleTree.insert(42, "LAB-SOLO", "Solo Equipment");
+        assert(singleTree.findMin(outItem) && outItem.dueDate == 42 && outItem.assetCode == "LAB-SOLO");
+        assert(singleTree.findMax(outItem) && outItem.dueDate == 42 && outItem.assetCode == "LAB-SOLO");
+
+        // Multi-node balanced tree: items 10, 20, 25, 30, 40, 50
+        assert(avl.findMin(outItem) && outItem.dueDate == 10 && outItem.assetCode == "LAB-10");
+        assert(avl.findMax(outItem) && outItem.dueDate == 50 && outItem.assetCode == "LAB-50");
+        std::cout << "[Test 5.5] findMin() & findMax() (Empty, Single, Multi-Node Boundaries): PASS" << std::endl;
+        std::cout << "          Earliest Due: Day " << outItem.dueDate << " (" << outItem.assetCode << ")" << std::endl;
+    }
+
+    // [Test 5.6] inorderSuccessor() Verification
+    {
+        CalibrationItem succ;
+        // Node with right subtree or ancestor
+        assert(avl.inorderSuccessor(10, "LAB-10", succ) && succ.dueDate == 20);
+        assert(avl.inorderSuccessor(20, "LAB-20", succ) && succ.dueDate == 25);
+        assert(avl.inorderSuccessor(25, "LAB-25", succ) && succ.dueDate == 30);
+        assert(avl.inorderSuccessor(30, "LAB-30", succ) && succ.dueDate == 40);
+        assert(avl.inorderSuccessor(40, "LAB-40", succ) && succ.dueDate == 50);
+
+        // Maximum boundary node has no successor
+        assert(!avl.inorderSuccessor(50, "LAB-50", succ));
+
+        // Non-existent timestamp: next upcoming deadline strictly greater than 15 is Day 20
+        assert(avl.inorderSuccessor(15, "", succ) && succ.dueDate == 20);
+
+        // Non-existent timestamp beyond maximum
+        assert(!avl.inorderSuccessor(999, "", succ));
+
+        std::cout << "[Test 5.6] inorderSuccessor() (Left/Right Subtrees, Ancestor Fallback, Boundary Max): PASS" << std::endl;
+    }
+
+    // [Test 5.7] inorderPredecessor() Verification
+    {
+        CalibrationItem pred;
+        // Successive predecessors
+        assert(avl.inorderPredecessor(50, "LAB-50", pred) && pred.dueDate == 40);
+        assert(avl.inorderPredecessor(40, "LAB-40", pred) && pred.dueDate == 30);
+        assert(avl.inorderPredecessor(30, "LAB-30", pred) && pred.dueDate == 25);
+        assert(avl.inorderPredecessor(25, "LAB-25", pred) && pred.dueDate == 20);
+        assert(avl.inorderPredecessor(20, "LAB-20", pred) && pred.dueDate == 10);
+
+        // Minimum boundary node has no predecessor
+        assert(!avl.inorderPredecessor(10, "LAB-10", pred));
+
+        // Non-existent timestamp: closest past deadline before Day 35 is Day 30
+        assert(avl.inorderPredecessor(35, "", pred) && pred.dueDate == 30);
+
+        // Non-existent timestamp before minimum
+        assert(!avl.inorderPredecessor(5, "", pred));
+
+        std::cout << "[Test 5.7] inorderPredecessor() (Subtree Min/Max, Ancestors, Boundary Min): PASS" << std::endl;
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -764,6 +827,16 @@ void testReportGeneration() {
     engine.getUpcomingCalibrations(0, 30, upcoming);
     std::cout << "[Test 11.5] AVL Calibration Range Query [0 to 30 days] found " 
               << upcoming.size() << " assets requiring calibration: PASS" << std::endl;
+
+    // 4. AVL Tree Earliest, Latest, & Successor Calibration Verification
+    CalibrationItem earliest, latest, nextDue;
+    assert(engine.getEarliestCalibration(earliest));
+    assert(engine.getLatestCalibration(latest));
+    assert(earliest.dueDate <= latest.dueDate);
+    assert(engine.getNextCalibrationAfter(earliest.dueDate, earliest.assetCode, nextDue));
+    assert(nextDue.dueDate >= earliest.dueDate);
+    std::cout << "[Test 11.6] AVL Earliest (" << earliest.assetCode << " at Day " << earliest.dueDate 
+              << ") & Latest (" << latest.assetCode << " at Day " << latest.dueDate << ") Verified: PASS" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
