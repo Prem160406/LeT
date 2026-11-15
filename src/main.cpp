@@ -63,6 +63,154 @@ void testCircularQueue() {
     // Insert after dequeue to verify circular wrap-around
     assert(queue.enqueue(r5));
     std::cout << "[Test 1.6] Circular wrap-around insertion: PASS (Size = " << queue.size() << ")" << std::endl;
+
+    // [Test 1.7] Batch Dequeue on Empty Queue & Zero Count
+    {
+        CircularQueue emptyQ(4);
+        CustomArray<FaultReport> emptyBatch;
+        int dequeued = emptyQ.dequeueBatch(emptyBatch, 3);
+        assert(dequeued == 0);
+        assert(emptyBatch.size() == 0);
+
+        // Zero count request on non-empty queue
+        CustomArray<FaultReport> zeroBatch;
+        assert(queue.dequeueBatch(zeroBatch, 0) == 0);
+        assert(zeroBatch.size() == 0);
+        assert(queue.size() == 4); // unchanged
+
+        // Raw pointer bounds safety
+        FaultReport rawArr[2];
+        assert(emptyQ.dequeueBatch(rawArr, 2) == 0);
+        assert(queue.dequeueBatch(static_cast<FaultReport*>(nullptr), 2) == 0);
+        assert(queue.dequeueBatch(rawArr, 0) == 0);
+        assert(queue.dequeueBatch(rawArr, -5) == 0);
+        std::cout << "[Test 1.7] Batch Dequeue empty queue and zero/invalid count safety: PASS" << std::endl;
+    }
+
+    // [Test 1.8] Partial Batch Dequeue (FIFO order)
+    // Current queue state: [R2, R3, R4, R5] (size = 4)
+    {
+        CustomArray<FaultReport> partialBatch;
+        int dequeued = queue.dequeueBatch(partialBatch, 2);
+        assert(dequeued == 2);
+        assert(partialBatch.size() == 2);
+        assert(partialBatch[0].reportId == "R2");
+        assert(partialBatch[1].reportId == "R3");
+        assert(queue.size() == 2);
+        std::cout << "[Test 1.8] Partial batch dequeue (2 items retrieved in FIFO order): PASS" << std::endl;
+    }
+
+    // [Test 1.9] Oversized Batch Dequeue (K > available items)
+    // Current queue state: [R4, R5] (size = 2)
+    {
+        CustomArray<FaultReport> overBatch;
+        int dequeued = queue.dequeueBatch(overBatch, 10); // Request 10, only 2 available
+        assert(dequeued == 2);
+        assert(overBatch.size() == 2);
+        assert(overBatch[0].reportId == "R4");
+        assert(overBatch[1].reportId == "R5");
+        assert(queue.isEmpty());
+        assert(queue.size() == 0);
+        std::cout << "[Test 1.9] Oversized batch request safely drains available elements: PASS" << std::endl;
+    }
+
+    // [Test 1.10] Batch Dequeue across Circular Array Wraparound
+    {
+        CircularQueue wrapQueue(5);
+        // Fill 4 items
+        FaultReport w1("W1", "A1", 1, 0, 0, 1, "W1");
+        FaultReport w2("W2", "A2", 2, 0, 0, 2, "W2");
+        FaultReport w3("W3", "A3", 3, 0, 0, 3, "W3");
+        FaultReport w4("W4", "A4", 4, 0, 0, 4, "W4");
+        assert(wrapQueue.enqueue(w1));
+        assert(wrapQueue.enqueue(w2));
+        assert(wrapQueue.enqueue(w3));
+        assert(wrapQueue.enqueue(w4));
+
+        // Dequeue 3 items -> head moves to index 3
+        FaultReport dummy;
+        assert(wrapQueue.dequeue(dummy) && dummy.reportId == "W1");
+        assert(wrapQueue.dequeue(dummy) && dummy.reportId == "W2");
+        assert(wrapQueue.dequeue(dummy) && dummy.reportId == "W3");
+        assert(wrapQueue.size() == 1); // Only W4 remains at index 3
+
+        // Enqueue 4 new items -> wraps across buffer index 0, 1, 2
+        FaultReport w5("W5", "A5", 5, 0, 0, 5, "W5");
+        FaultReport w6("W6", "A6", 1, 0, 0, 6, "W6");
+        FaultReport w7("W7", "A7", 2, 0, 0, 7, "W7");
+        FaultReport w8("W8", "A8", 3, 0, 0, 8, "W8");
+        assert(wrapQueue.enqueue(w5)); // at index 4
+        assert(wrapQueue.enqueue(w6)); // at index 0 (wrapped!)
+        assert(wrapQueue.enqueue(w7)); // at index 1
+        assert(wrapQueue.enqueue(w8)); // at index 2
+        assert(wrapQueue.isFull());
+        assert(wrapQueue.size() == 5);
+
+        // Batch dequeue all 5 items across the boundary
+        CustomArray<FaultReport> wrapBatch;
+        int dequeued = wrapQueue.dequeueBatch(wrapBatch, -1); // -1 defaults to all
+        assert(dequeued == 5);
+        assert(wrapBatch.size() == 5);
+        assert(wrapBatch[0].reportId == "W4");
+        assert(wrapBatch[1].reportId == "W5");
+        assert(wrapBatch[2].reportId == "W6");
+        assert(wrapBatch[3].reportId == "W7");
+        assert(wrapBatch[4].reportId == "W8");
+        assert(wrapQueue.isEmpty());
+        std::cout << "[Test 1.10] Wraparound batch dequeue across circular boundary (FIFO): PASS" << std::endl;
+    }
+
+    // [Test 1.11] Raw Pointer Overload Batch Dequeue
+    {
+        CircularQueue rawQueue(4);
+        FaultReport p1("P1", "A1", 1, 0, 0, 1, "P1");
+        FaultReport p2("P2", "A2", 2, 0, 0, 2, "P2");
+        FaultReport p3("P3", "A3", 3, 0, 0, 3, "P3");
+        assert(rawQueue.enqueue(p1));
+        assert(rawQueue.enqueue(p2));
+        assert(rawQueue.enqueue(p3));
+
+        FaultReport rawArr[3];
+        int dequeued = rawQueue.dequeueBatch(rawArr, 3);
+        assert(dequeued == 3);
+        assert(rawArr[0].reportId == "P1");
+        assert(rawArr[1].reportId == "P2");
+        assert(rawArr[2].reportId == "P3");
+        assert(rawQueue.isEmpty());
+        std::cout << "[Test 1.11] Raw pointer array overload batch dequeue: PASS" << std::endl;
+    }
+
+    // [Test 1.12] Engine Batch Processing Integration
+    {
+        Engine testEngine(10);
+        Asset t1("TEST-01", "Test Asset 1", "Lab", 30, 0.0);
+        Asset t2("TEST-02", "Test Asset 2", "Lab", 30, 0.0);
+        Asset t3("TEST-03", "Test Asset 3", "Lab", 30, 0.0);
+        testEngine.registerAsset(t1);
+        testEngine.registerAsset(t2);
+        testEngine.registerAsset(t3);
+
+        FaultReport fr1("B-01", "TEST-01", 3, 2, 1.0, 100, "Fault 1");
+        FaultReport fr2("B-02", "TEST-02", 4, 1, 2.0, 101, "Fault 2");
+        FaultReport fr3("B-03", "TEST-03", 5, 0, 0.5, 102, "Fault 3");
+        testEngine.submitReportToBuffer(fr1);
+        testEngine.submitReportToBuffer(fr2);
+        testEngine.submitReportToBuffer(fr3);
+
+        // Process batch of 2
+        int processed = testEngine.processBatchReports(2);
+        assert(processed == 2);
+        TriageTask topTask;
+        assert(testEngine.peekHighestUrgencyTask(topTask));
+
+        // Process remaining with larger batchSize
+        int processedRemaining = testEngine.processBatchReports(5);
+        assert(processedRemaining == 1);
+
+        // Buffer now empty, batch returns 0
+        assert(testEngine.processBatchReports(1) == 0);
+        std::cout << "[Test 1.12] Engine batch processing (processBatchReports): PASS" << std::endl;
+    }
 }
 
 // -----------------------------------------------------------------------------
