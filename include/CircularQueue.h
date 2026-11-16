@@ -2,6 +2,7 @@
 #define CIRCULAR_QUEUE_H
 
 #include "Asset.h"
+#include "Common.h"
 #include <stdexcept>
 #include <string>
 
@@ -52,6 +53,25 @@ public:
      * @return true if successfully dequeued, false if queue is empty.
      */
     bool dequeue(FaultReport& outReport);
+
+    /**
+     * @brief Dequeues multiple reports in FIFO order in a single batch operation.
+     * Handles requests larger than available items safely by returning a partial batch.
+     * Time Complexity: O(K) where K = min(maxCount, count) items dequeued.
+     * @param outBatch Output CustomArray receiving dequeued reports.
+     * @param maxCount Maximum number of reports to dequeue (defaults to -1, which dequeues all).
+     * @return Number of reports actually dequeued.
+     */
+    int dequeueBatch(CustomArray<FaultReport>& outBatch, int maxCount = -1);
+
+    /**
+     * @brief Dequeues multiple reports into a preallocated raw array.
+     * Time Complexity: O(K) where K = min(maxCount, count).
+     * @param outReports Pointer to array with capacity at least maxCount.
+     * @param maxCount Maximum number of reports to dequeue.
+     * @return Number of reports actually dequeued.
+     */
+    int dequeueBatch(FaultReport* outReports, int maxCount);
 
     /**
      * @brief Peeks at the front report without removing it.

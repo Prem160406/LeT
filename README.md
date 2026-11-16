@@ -14,7 +14,7 @@ An academic Data Structures & Algorithms project (VIT Pune, Semester 3, Group 8,
 
 | # | Data Structure | Exact Role in Engine | Time Complexity |
 |---|---|---|---|
-| 1 | **Circular Queue** | Fixed-capacity, memory-bounded FIFO buffer for incoming service desk intake tickets. | $O(1)$ push / pop / peek |
+| 1 | **Circular Queue** | Fixed-capacity, memory-bounded FIFO buffer for incoming service desk intake tickets. Supports bulk batch dequeue ($O(K)$) preserving FIFO order across circular wraparounds. | $O(1)$ push / pop / peek, $O(K)$ batch dequeue |
 | 2 | **Hash Table** | Primary key asset lookup by unique equipment code (e.g. `LAB-PC-017`). Uses **Separate Chaining** with custom singly-linked buckets and dynamic rehashing at load factor $\ge 0.75$. | Average $O(1)$ lookup |
 | 3 | **Doubly Linked List** | Bi-directional interleaved fault and calibration history nodes per asset; enables linear drift rate calculation $\frac{\Delta(\text{Dev})}{\Delta(\text{Time})}$. | $O(1)$ append / unlink, $O(1)$ drift rate |
 | 4 | **Max-Heap** | Priority queue triaging emergency jobs by live composite Risk Score: $\text{BaseRisk} = 3S + 2\text{Overdue} + 5\|\text{Drift}\|$. Root always holds the highest urgency job. | $O(1)$ root peek, $O(\log N)$ extraction / insertion |

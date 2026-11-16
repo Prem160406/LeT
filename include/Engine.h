@@ -76,6 +76,15 @@ public:
     bool processNextBufferReport();
 
     /**
+     * @brief Pulls up to batchSize reports from CircularQueue using batch dequeue
+     * and processes each through the 5-step triage pipeline.
+     * Time Complexity: O(K log N) where K is number of reports dequeued.
+     * @param batchSize Maximum number of reports to dequeue and process.
+     * @return Number of reports successfully processed.
+     */
+    int processBatchReports(int batchSize);
+
+    /**
      * @brief Processes all pending reports currently buffered in the CircularQueue.
      * Time Complexity: O(K log N) where K is number of buffered reports.
      */

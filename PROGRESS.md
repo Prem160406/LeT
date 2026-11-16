@@ -10,7 +10,7 @@
 | Component | Role / Purpose | Status | Complexity Proofed |
 |---|---|---|---|
 | **Data Models (`Asset.h`, `Asset.cpp`)** | Core records (Asset, FaultReport, TriageTask, HistoryEntry) | Completed | Constructors, deep copy, move semantics, supplier & blast tracking |
-| **1. Circular Queue (`CircularQueue.h`, `.cpp`)** | Fixed-capacity FIFO service report intake | Completed | $O(1)$ push/pop, bounded wrap-around verified |
+| **1. Circular Queue (`CircularQueue.h`, `.cpp`)** | Fixed-capacity FIFO service report intake & bulk batch processing | Completed | $O(1)$ push/pop, $O(K)$ batch dequeue, bounded wrap-around verified |
 | **2. Hash Table (`HashTable.h`, `.cpp`)** | Asset lookup by unique asset code | Completed | Average $O(1)$ lookup via Separate Chaining, verified |
 | **3. Doubly Linked List (`DoublyLinkedList.h`, `.cpp`)** | Asset history + linear drift rate calculation | Completed | $O(1)$ append, $O(1)$ drift $\Delta(\text{Dev})/\Delta(\text{Time})$ verified |
 | **4. Max-Heap (`MaxHeap.h`, `.cpp`)** | Priority Queue for live Risk Score triage | Completed | $O(1)$ root urgency, $O(\log N)$ extraction verified |
@@ -32,6 +32,7 @@
 ## 2. Completed Scope (100% + Intelligence Suite)
 
 - [x] **Zero-STL Container Rule**: All 8 core data structures implemented 100% from scratch. No `std::unordered_map`, `std::priority_queue`, `std::stack`, `std::map`, `std::vector`, or `std::list`.
+- [x] **Circular Queue Batch Dequeue & Pipeline Integration**: Implemented $O(K)$ batch dequeue handling wraparound and arbitrary request sizes safely, integrated into `Engine::processBatchReports(batchSize)`.
 - [x] **Hash Table Collision Handling**: Implemented with **Separate Chaining** using custom singly-linked bucket chains and polynomial rolling hash (`hash * 33 + c`). Rehashes dynamically when load factor $\ge 0.75$.
 - [x] **Drift Calculation**:
   $$\text{Drift Rate} = \frac{\Delta(\text{Deviation})}{\Delta(\text{Time})} = \frac{\text{Dev}_{\text{latest}} - \text{Dev}_{\text{previous}}}{t_{\text{latest}} - t_{\text{previous}}}$$

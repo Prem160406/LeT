@@ -83,16 +83,76 @@ bool Engine::processNextBufferReport() {
     return true;
 }
 
-int Engine::processAllBufferedReports() {
-    int processed = 0;
-    while (!intakeBuffer.isEmpty()) {
-        if (processNextBufferReport()) {
-            ++processed;
-        } else {
-            break;
-        }
+int Engine::processBatchReports(int batchSize) {
+    if (batchSize <= 0 || intakeBuffer.isEmpty()) {
+        return 0;
     }
+
+    CustomArray<FaultReport> batch;
+    int dequeued = intakeBuffer.dequeueBatch(batch, batchSize);
+    if (dequeued == 0) {
+        return 0;
+    }
+    int processed = 0;
+
+    for (size_t i = 0; i < batch.size(); ++i) {
+        const FaultReport& report = batch[i];
+
+        // Step 2: O(1) Hash Table lookup by unique asset code
+        Asset* targetAsset = assetRegistry.find(report.assetCode);
+        if (targetAsset == nullptr) {
+            std::cerr << "[Engine Error] Asset not found in registry: " << report.assetCode << std::endl;
+            continue;
+        }
+
+        // Step 3: Compute Linear Drift Rate from recent history nodes:
+        double driftVelocity = 0.0;
+        const HistoryEntry* prevEntry = targetAsset->history->getLatestEntry();
+        if (prevEntry != nullptr) {
+            double deltaDev = report.measuredDeviation - prevEntry->measuredDeviation;
+            long long deltaTime = report.timestamp - prevEntry->timestamp;
+            if (deltaTime != 0) {
+                driftVelocity = deltaDev / static_cast<double>(deltaTime);
+            }
+        }
+
+        // Append to asset's Doubly Linked List (O(1))
+        HistoryEntry newEntry(ENTRY_FAULT, report.reportId, report.timestamp, 
+                              report.measuredDeviation, report.severity, 
+                              report.description, driftVelocity);
+        targetAsset->history->append(newEntry);
+        targetAsset->totalFaultCount++;
+
+        // Step 4: Calculate Composite Base Risk Score
+        double baseRiskScore = MaxHeap::computeRiskScore(report.severity, report.daysOverdue, driftVelocity);
+
+        // Step 5: Factoring Blast Radius from Dependency Graph
+        int blastRadiusCount = dependencyGraph.getBlastRadiusCount(targetAsset->assetCode);
+        double blastMultiplier = calculateBlastRadiusFactor(targetAsset->assetCode);
+        double effectiveRiskScore = baseRiskScore * blastMultiplier;
+
+        TriageTask task(report.reportId, targetAsset->assetCode, targetAsset->name,
+                       report.severity, report.daysOverdue, driftVelocity, effectiveRiskScore,
+                       report.timestamp, report.description, blastRadiusCount, blastMultiplier);
+        
+        // Insert into Max-Heap priority queue (O(log N))
+        triageQueue.insert(task);
+        ++processedReportsCount;
+
+        // Push snapshot to Undo Stack for O(1) rollback capability
+        UndoRecord rec(UNDO_FAULT_REPORT, targetAsset->assetCode, task.taskId,
+                       report.timestamp, report.measuredDeviation, report.severity,
+                       report.description);
+        undoManager.push(rec);
+
+        ++processed;
+    }
+
     return processed;
+}
+
+int Engine::processAllBufferedReports() {
+    return processBatchReports(intakeBuffer.size());
 }
 
 // =============================================================================

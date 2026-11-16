@@ -41,6 +41,42 @@ bool CircularQueue::dequeue(FaultReport& outReport) {
 }
 
 /**
+ * Time Complexity: O(K) where K = min(maxCount, count).
+ * Reads up to maxCount items in FIFO order, advancing head modulo capacity.
+ * Handles requests larger than available items by retrieving partial batch.
+ */
+int CircularQueue::dequeueBatch(CustomArray<FaultReport>& outBatch, int maxCount) {
+    if (isEmpty() || maxCount == 0) {
+        return 0;
+    }
+
+    int toDequeue = (maxCount < 0 || maxCount > count) ? count : maxCount;
+    for (int i = 0; i < toDequeue; ++i) {
+        outBatch.push_back(buffer[head]);
+        head = (head + 1) % capacity;
+    }
+    count -= toDequeue;
+    return toDequeue;
+}
+
+/**
+ * Time Complexity: O(K) where K = min(maxCount, count).
+ */
+int CircularQueue::dequeueBatch(FaultReport* outReports, int maxCount) {
+    if (outReports == nullptr || isEmpty() || maxCount <= 0) {
+        return 0;
+    }
+
+    int toDequeue = (maxCount > count) ? count : maxCount;
+    for (int i = 0; i < toDequeue; ++i) {
+        outReports[i] = buffer[head];
+        head = (head + 1) % capacity;
+    }
+    count -= toDequeue;
+    return toDequeue;
+}
+
+/**
  * Time Complexity: O(1).
  * Reads element at index 'head' without state mutation.
  */
