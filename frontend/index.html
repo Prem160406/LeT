@@ -387,6 +387,27 @@
                 Select an equipment above to verify shutdown safety.
               </div>
             </div>
+
+            <!-- Connect Dependency Link (Graph Topology Builder) -->
+            <div class="panel-card" data-dsa="Graph Adjacency List Directed Edge Insert | O(1)">
+              <h4>Connect Dependency Link</h4>
+              <p class="panel-desc" style="font-size: 0.8rem; margin-bottom: 0.5rem;">Add a directed power or data edge between existing instruments in the graph.</p>
+              <form id="form-add-edge" style="margin-top: 0.5rem;">
+                <div class="form-group">
+                  <label for="select-edge-from">Source / Upstream Provider:</label>
+                  <select id="select-edge-from" required>
+                    <option value="" disabled selected>-- Select Provider --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="select-edge-to">Dependent Hardware (Relies On Provider):</label>
+                  <select id="select-edge-to" required>
+                    <option value="" disabled selected>-- Select Dependent --</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">Add Dependency Connection</button>
+              </form>
+            </div>
           </div>
         </section>
       </div>
@@ -597,6 +618,7 @@
 
       <div class="chat-chips-bar">
         <button class="chat-chip" data-query="How does this work under the hood?">Under the Hood</button>
+        <button class="chat-chip" data-query="How to add new equipment to the graph?">Add to Graph?</button>
         <button class="chat-chip" data-query="What data structures are used?">DSA Architecture</button>
         <button class="chat-chip" data-query="How is risk score calculated?">Risk Formula</button>
         <button class="chat-chip" data-query="Explain Big-O time complexity">Big-O Bounds</button>

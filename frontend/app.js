@@ -210,6 +210,25 @@ document.addEventListener('DOMContentLoaded', () => {
         safetySelect.value = currentVal;
       }
     }
+
+    const edgeFromSelect = document.getElementById('select-edge-from');
+    const edgeToSelect = document.getElementById('select-edge-to');
+    if (edgeFromSelect) {
+      const cur = edgeFromSelect.value;
+      edgeFromSelect.innerHTML = `
+        <option value="" disabled ${!cur ? 'selected' : ''}>-- Select Provider --</option>
+        ${assets.map(a => `<option value="${a.assetCode}">${a.assetCode} — ${a.name}</option>`).join('')}
+      `;
+      if (cur) edgeFromSelect.value = cur;
+    }
+    if (edgeToSelect) {
+      const cur = edgeToSelect.value;
+      edgeToSelect.innerHTML = `
+        <option value="" disabled ${!cur ? 'selected' : ''}>-- Select Dependent --</option>
+        ${assets.map(a => `<option value="${a.assetCode}">${a.assetCode} — ${a.name}</option>`).join('')}
+      `;
+      if (cur) edgeToSelect.value = cur;
+    }
   }
 
   async function loadTriageQueue() {
@@ -836,6 +855,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const formAddEdge = document.getElementById('form-add-edge');
+  if (formAddEdge) {
+    formAddEdge.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const from = document.getElementById('select-edge-from').value;
+      const to = document.getElementById('select-edge-to').value;
+      if (!from || !to) {
+        showToast('Please select both provider and dependent equipment', 'danger');
+        return;
+      }
+      if (from === to) {
+        showToast('Self-loop dependencies are not permitted', 'danger');
+        return;
+      }
+      try {
+        const res = await fetch('/api/graph/edge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from, to })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to add dependency');
+        showToast(`Dependency established: ${from} ──> ${to}`, 'success');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    });
+  }
+
   // =========================================================================
   // OFFICIAL EXECUTIVE PDF CERTIFICATE BUILDER
   // =========================================================================
@@ -1309,6 +1358,24 @@ Transitive Impact Path:
         `• "Which machine is a Single Point of Failure?" (Graph BFS)\n` +
         `• "Which supplier is the worst (Lemon Index)?"\n` +
         `• "Predict next failure" (Remaining Useful Life Forecast)`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // Graph Addition & Dynamic Dependencies
+    if (cleanQ.includes('add to graph') || cleanQ.includes('add graph') || cleanQ.includes('new addition') || cleanQ.includes('add equipment') || cleanQ.includes('how to add') || cleanQ.includes('connect equipment')) {
+      let reply = `How Graph Additions & New Dependencies Work:\n\n` +
+        `1. Registering New Equipment (Tab 1):\n` +
+        `   In the "Register Equipment" form, pick an "Upstream Dependency (Relies On)":\n` +
+        `   • If an upstream dependency is selected, a directed edge (Provider ──> Dependent) is created automatically.\n` +
+        `   • If (None) is selected, the equipment is registered as a standalone root backbone node.\n\n` +
+        `2. Connecting Existing Equipment (Tab 2):\n` +
+        `   Use the "Connect Dependency Link" form under the Equipment Dependency Map:\n` +
+        `   • Select Provider (e.g. LAB-UPS-01)\n` +
+        `   • Select Dependent (e.g. LAB-CENT-009)\n` +
+        `   • Click "Add Dependency Connection" — the graph immediately renders the new link and recalculates blast radius & SPOFs!\n\n` +
+        `3. Dynamic Subsystem Filtering:\n` +
+        `   New nodes dynamically inherit downstream reachability and appear in the Sub-Graph Reference Keys.`;
       appendChatMessage(reply, 'bot');
       return;
     }

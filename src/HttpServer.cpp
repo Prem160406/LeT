@@ -123,6 +123,9 @@ void HttpServer::start() {
         std::string loc = extractJsonString(req.body, "location");
         std::string supp = extractJsonString(req.body, "supplier");
         std::string dependsOn = extractJsonString(req.body, "dependsOn");
+        if (dependsOn.empty()) {
+            dependsOn = extractJsonString(req.body, "upstreamDependency");
+        }
         long long calibDue = extractJsonLong(req.body, "nextCalibrationDue");
         double downtime = extractJsonDouble(req.body, "totalDowntimeHours");
 
@@ -138,6 +141,7 @@ void HttpServer::start() {
         bool success = engine.registerAsset(newAsset);
 
         if (success) {
+            engine.getGraph().addVertex(code);
             if (!dependsOn.empty()) {
                 engine.getGraph().addEdge(dependsOn, code);
             }
@@ -145,6 +149,30 @@ void HttpServer::start() {
         } else {
             res.status = 400;
             res.set_content("{\"status\":\"error\",\"message\":\"Asset code already exists\"}", "application/json");
+        }
+    });
+
+    // =========================================================================
+    // POST /api/graph/edge — Adds a dependency edge between existing assets
+    // =========================================================================
+    server.Post("/api/graph/edge", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        std::string from = extractJsonString(req.body, "from");
+        std::string to = extractJsonString(req.body, "to");
+        if (from.empty() || to.empty()) {
+            res.status = 400;
+            res.set_content("{\"status\":\"error\",\"message\":\"Both 'from' and 'to' asset codes are required\"}", "application/json");
+            return;
+        }
+        if (from == to) {
+            res.status = 400;
+            res.set_content("{\"status\":\"error\",\"message\":\"Self-loop dependencies are not permitted\"}", "application/json");
+            return;
+        }
+        bool added = engine.getGraph().addEdge(from, to);
+        if (added) {
+            res.set_content("{\"status\":\"success\",\"message\":\"Dependency connection added successfully\"}", "application/json");
+        } else {
+            res.set_content("{\"status\":\"info\",\"message\":\"Dependency connection updated/already exists\"}", "application/json");
         }
     });
 
@@ -301,7 +329,7 @@ void HttpServer::start() {
 
         // 0. Handle Incomplete / Ambiguous Queries (e.g. "which", "which is", "what", "help")
         if (tokens.empty() || (tokens.size() <= 2 && (hasWord("which") || hasWord("what") || hasWord("who") || hasWord("help") || hasWord("show")) && !hasWord("hood") && !hasWord("dsa") && !hasWord("downtime") && !hasWord("risk") && !hasWord("fault") && !hasWord("spof") && !hasWord("heap") && !hasWord("tree") && !hasWord("queue"))) {
-            responseText = "I can assist with both live laboratory diagnostics and deep \"Under the Hood\" Data Structures & Algorithms:\n\n"
+            responseText = "Please specify what you would like to analyze. I can assist with both live laboratory diagnostics and deep \"Under the Hood\" Data Structures & Algorithms:\n\n"
                            "UNDER THE HOOD & DSA ARCHITECTURE:\n"
                            "• \"How does this work under the hood?\" — 5-stage real-time pipeline\n"
                            "• \"What data structures are used?\" — All 8 custom C++ data structures (Zero STL)\n"
@@ -317,6 +345,20 @@ void HttpServer::start() {
                            "• \"Predict next failure\" (Remaining Useful Life Forecast)";
         }
         // UNDER THE HOOD: Architecture & Pipeline
+        else if (hasSub("add to graph") || hasSub("add graph") || hasSub("new addition") || hasSub("add equipment") || hasSub("how to add") || hasSub("connect equipment")) {
+            responseText = "How Graph Additions & New Dependencies Work:\n\n"
+                           "1. Registering New Equipment (Tab 1):\n"
+                           "   In the \"Register Equipment\" form, pick an \"Upstream Dependency (Relies On)\":\n"
+                           "   • If an upstream dependency is selected, a directed edge (Provider ──> Dependent) is created automatically.\n"
+                           "   • If (None) is selected, the equipment is registered as a standalone root backbone node.\n\n"
+                           "2. Connecting Existing Equipment (Tab 2):\n"
+                           "   Use the \"Connect Dependency Link\" form under the Equipment Dependency Map:\n"
+                           "   • Select Provider (e.g. LAB-UPS-01)\n"
+                           "   • Select Dependent (e.g. LAB-CENT-009)\n"
+                           "   • Click \"Add Dependency Link\" — the graph immediately renders the new link and recalculates blast radius & SPOFs!\n\n"
+                           "3. Dynamic Subsystem Filtering:\n"
+                           "   New nodes dynamically inherit downstream reachability and appear in the Sub-Graph Reference Keys.";
+        }
         else if (hasSub("under the hood") || hasSub("how does it work") || hasSub("how it works") ||
                  hasWord("architecture") || hasWord("pipeline") || hasWord("internals") || hasSub("how does this work") ||
                  hasSub("how this works") || hasSub("explain system") || hasSub("explain engine")) {
@@ -539,8 +581,9 @@ void HttpServer::start() {
             }
         }
         // 4. Specific Entity Lookup (by Asset Code or Name keyword)
-        else if (hasSub("lab-") || hasWord("ups") || hasWord("switch") || hasWord("centrifuge") ||
-                 hasWord("spectrometer") || hasWord("chiller") || hasWord("laser") || hasWord("workstation")) {
+        else if ((hasSub("lab-") || hasWord("ups") || hasWord("switch") || hasWord("centrifuge") ||
+                  hasWord("spectrometer") || hasWord("chiller") || hasWord("laser") || hasWord("workstation")) &&
+                 !hasWord("service") && !hasWord("safely") && !hasWord("maintenance") && !hasWord("window")) {
             CustomArray<Asset*> allAssets;
             engine.getAllAssets(allAssets);
             Asset* matched = nullptr;
@@ -666,6 +709,51 @@ void HttpServer::start() {
                            "• A positive drift (+0.05 mm/s) indicates progressive mechanical wear or photodetector degradation.\n"
                            "• A negative drift (-0.50 mm/s) indicates sudden rotor wobble or structural shock.\n"
                            "• When recalibration is performed, deviation resets toward baseline, proving the effectiveness of the calibration cycle.";
+        }
+        // 9. Maintenance Window Safety Evaluation
+        else if (hasWord("service") || hasWord("safely") || hasWord("maintenance") || hasWord("window")) {
+            std::string target = "LAB-COOL-01";
+            if (cleanQ.find("ups") != std::string::npos) target = "LAB-UPS-01";
+            else if (cleanQ.find("net") != std::string::npos) target = "LAB-NET-01";
+            else if (cleanQ.find("pc") != std::string::npos) target = "LAB-PC-17";
+            else if (cleanQ.find("laser") != std::string::npos) target = "LAB-LASER-02";
+            else if (cleanQ.find("cent") != std::string::npos) target = "LAB-CENT-01";
+            else if (cleanQ.find("spec") != std::string::npos) target = "LAB-SPEC-03";
+
+            Asset* targetAsset = engine.getAsset(target);
+            std::string name = targetAsset ? targetAsset->name : target;
+
+            CustomArray<std::string> affected;
+            engine.getGraph().bfs(target, affected);
+
+            CustomArray<TriageTask> tasks;
+            engine.getTriageTasksSnapshot(tasks);
+            int activeConflicts = 0;
+            for (size_t i = 0; i < tasks.size(); ++i) {
+                if (tasks[i].assetCode == target) activeConflicts++;
+            }
+
+            bool isSafe = (activeConflicts == 0 && affected.size() == 0);
+            std::string verdict = isSafe ? "SAFE FOR SERVICE" : "UNSAFE: SYSTEMIC DISRUPTION";
+            std::string guidance = isSafe ? 
+                "Zero downstream equipment will be affected. Safe to schedule shutdown for maintenance." :
+                "WARNING: Taking this asset offline halts " + std::to_string(affected.size()) + " downstream machines. Active conflicts: " + std::to_string(activeConflicts) + ".";
+
+            std::ostringstream rep;
+            rep << "Maintenance Window Evaluation for " << name << " (" << target << "):\n"
+                << "Verdict: " << verdict << "\n"
+                << "Impact: Taking this offline halts " << affected.size() << " downstream machines.\n"
+                << "Advice: " << guidance;
+            responseText = rep.str();
+        }
+        // 10. Clarification for Incomplete "Which" Queries
+        else if (cleanQ == "which" || cleanQ == "which is" || cleanQ == "which one" || cleanQ == "what" || cleanQ == "what is") {
+            responseText = "Please specify what you would like to identify:\n\n"
+                           "• \"Which is most faulty?\" (Finds equipment with highest logged fault count)\n"
+                           "• \"Which is least faulty?\" (Finds reliable nominal equipment with zero faults)\n"
+                           "• \"Which is highest risk?\" (Finds the current Max-Heap triage emergency root)\n"
+                           "• \"Which machine is a Single Point of Failure?\" (Finds high-blast bottleneck assets)\n"
+                           "• \"Which supplier is the worst?\" (Finds suppliers with lowest Lemon Index scores)";
         }
         // 9. Default Fallback
         else {
