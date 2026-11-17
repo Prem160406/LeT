@@ -1140,8 +1140,13 @@ document.addEventListener('DOMContentLoaded', () => {
       subText.textContent = node.subLabel || truncate(node.name, 16);
       g.appendChild(subText);
 
-      // Click event for blast radius inspection
-      g.addEventListener('click', async () => {
+      // Click event for blast radius inspection (toggles off if already selected)
+      g.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (state.selectedGraphNode === node.id) {
+          resetGraphSelection();
+          return;
+        }
         state.selectedGraphNode = node.id;
         await simulateNodeBlast(node.id);
       });
@@ -1194,6 +1199,33 @@ Transitive Impact Path:
     state.animatingNodes = new Set(affectedIds);
     drawTopologyGraph();
   }
+
+  function resetGraphSelection() {
+    state.selectedGraphNode = null;
+    state.animatingNodes.clear();
+    drawTopologyGraph();
+    const box = document.getElementById('blast-simulation-result');
+    if (box) box.textContent = 'Click any equipment bubble above to evaluate its downstream dependents.';
+  }
+
+  // Click empty SVG canvas area to clear active selection
+  const svgCanvas = document.getElementById('graph-svg');
+  if (svgCanvas) {
+    svgCanvas.addEventListener('click', (e) => {
+      if (!e.target.closest('.node-bubble')) {
+        if (state.selectedGraphNode || state.animatingNodes.size > 0) {
+          resetGraphSelection();
+        }
+      }
+    });
+  }
+
+  // Escape key deselects active equipment
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && (state.selectedGraphNode || state.animatingNodes.size > 0)) {
+      resetGraphSelection();
+    }
+  });
 
   const btnRefreshGraph = document.getElementById('btn-refresh-graph');
   if (btnRefreshGraph) {
@@ -1358,6 +1390,17 @@ Transitive Impact Path:
         `• "Which machine is a Single Point of Failure?" (Graph BFS)\n` +
         `• "Which supplier is the worst (Lemon Index)?"\n` +
         `• "Predict next failure" (Remaining Useful Life Forecast)`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // Reset Graph Interaction
+    if (cleanQ.includes('reset graph') || cleanQ.includes('reset map') || cleanQ.includes('clear graph') || cleanQ.includes('reset interaction') || cleanQ.includes('deselect') || cleanQ.includes('unselect')) {
+      let reply = `How to Reset Graph Interactions:\n\n` +
+        `1. "Reset Map View" Button: Click the button at the top-right of Tab 2 to clear all selections, restore the default view, uncheck Isolate View, and reset the Reference Key to "ALL".\n` +
+        `2. Click Empty Canvas Background: Click anywhere on the gray canvas background outside bubbles to immediately deselect the current node and clear blast highlights.\n` +
+        `3. Re-click Active Bubble: Clicking an already-selected equipment bubble toggles it off.\n` +
+        `4. Escape Key: Press [Esc] anytime to clear active selection and wave animations.`;
       appendChatMessage(reply, 'bot');
       return;
     }

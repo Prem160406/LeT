@@ -204,6 +204,7 @@ def run_tests():
         test_queries = [
             ("How does this work under the hood?", "Circular Queue"),
             ("How to add new equipment to the graph?", "Connect Dependency Link"),
+            ("How to reset graph interaction?", "Reset Map View"),
             ("What data structures are used?", "Zero STL"),
             ("How is risk score calculated?", "Effective Risk Score"),
             ("Explain Big-O time complexity", "Big-O Analysis"),

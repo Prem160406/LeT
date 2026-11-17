@@ -359,6 +359,14 @@ void HttpServer::start() {
                            "3. Dynamic Subsystem Filtering:\n"
                            "   New nodes dynamically inherit downstream reachability and appear in the Sub-Graph Reference Keys.";
         }
+        // UNDER THE HOOD: Reset Graph Interactions
+        else if (hasSub("reset graph") || hasSub("reset map") || hasSub("clear graph") || hasSub("reset interaction") || hasSub("deselect") || hasSub("unselect")) {
+            responseText = "How to Reset Graph Interactions:\n\n"
+                           "1. \"Reset Map View\" Button: Click the button at the top-right of Tab 2 to clear all selections, restore the default view, uncheck Isolate View, and reset the Reference Key to \"ALL\".\n"
+                           "2. Click Empty Canvas Background: Click anywhere on the gray canvas background outside bubbles to immediately deselect the current node and clear blast highlights.\n"
+                           "3. Re-click Active Bubble: Clicking an already-selected equipment bubble toggles it off.\n"
+                           "4. Escape Key: Press [Esc] anytime to clear active selection and wave animations.";
+        }
         else if (hasSub("under the hood") || hasSub("how does it work") || hasSub("how it works") ||
                  hasWord("architecture") || hasWord("pipeline") || hasWord("internals") || hasSub("how does this work") ||
                  hasSub("how this works") || hasSub("explain system") || hasSub("explain engine")) {
