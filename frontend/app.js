@@ -20,7 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedGraphNode: null,
     animatingNodes: new Set(),
     animationTimer: null,
-    inspectorMode: false
+    inspectorMode: false,
+    activeGraphKey: 'ALL',
+    isolateGraph: false
   };
 
   // Toast Notification System (replaces disruptive browser alert popups)
@@ -909,18 +911,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   const nodePositions = {};
 
+  function getShortBadge(id) {
+    if (!id) return 'DEV';
+    const clean = id.replace(/^LAB-?/i, '');
+    if (clean.length > 5) return clean.substring(0, 5).toUpperCase();
+    return clean.toUpperCase();
+  }
+
   function setupNodeCoordinates() {
     const nodes = state.graphData.nodes || [];
     if (nodes.length === 0) return;
 
     const predefined = {
-      'LAB-UPS-01': { x: 130, y: 210, role: 'source', radius: 28 },
-      'LAB-NET-SW': { x: 380, y: 120, role: 'hub', radius: 24 },
-      'LAB-COOL-01': { x: 380, y: 300, role: 'hub', radius: 24 },
-      'LAB-PC-017': { x: 680, y: 70, role: 'leaf', radius: 22 },
-      'LAB-SPEC-003': { x: 680, y: 170, role: 'leaf', radius: 22 },
-      'LAB-LASER-01': { x: 680, y: 270, role: 'leaf', radius: 22 },
-      'LAB-CENT-009': { x: 890, y: 210, role: 'leaf', radius: 22 }
+      'LAB-UPS-01': { x: 130, y: 210, role: 'source', radius: 34, badge: 'UPS', subLabel: 'Main UPS 10kVA', systems: ['SYS-PWR'] },
+      'LAB-NET-SW': { x: 380, y: 120, role: 'hub', radius: 30, badge: 'NET', subLabel: 'Gigabit Switch', systems: ['SYS-PWR', 'SYS-NET'] },
+      'LAB-COOL-01': { x: 380, y: 300, role: 'hub', radius: 30, badge: 'COOL', subLabel: 'Water Chiller', systems: ['SYS-PWR', 'SYS-OPT'] },
+      'LAB-PC-017': { x: 680, y: 70, role: 'leaf', radius: 26, badge: 'PC-17', subLabel: 'Rig Alpha', systems: ['SYS-PWR', 'SYS-NET', 'SYS-ANA'] },
+      'LAB-SPEC-003': { x: 680, y: 170, role: 'leaf', radius: 26, badge: 'SPEC', subLabel: 'UV-Vis Spec', systems: ['SYS-PWR', 'SYS-NET', 'SYS-ANA'] },
+      'LAB-LASER-01': { x: 680, y: 270, role: 'leaf', radius: 26, badge: 'LASER', subLabel: 'Nd:YAG Pulse', systems: ['SYS-PWR', 'SYS-OPT'] },
+      'LAB-CENT-009': { x: 890, y: 210, role: 'leaf', radius: 26, badge: 'CENT', subLabel: 'Centrifuge 30k', systems: ['SYS-ANA'] }
     };
 
     nodes.forEach((node, idx) => {
@@ -929,7 +938,10 @@ document.addEventListener('DOMContentLoaded', () => {
           ...node,
           x: predefined[node.id].x,
           y: predefined[node.id].y,
-          radius: predefined[node.id].radius
+          radius: predefined[node.id].radius,
+          badge: predefined[node.id].badge,
+          subLabel: predefined[node.id].subLabel,
+          systems: predefined[node.id].systems
         };
       } else {
         const angle = (idx / nodes.length) * 2 * Math.PI;
@@ -937,11 +949,22 @@ document.addEventListener('DOMContentLoaded', () => {
           ...node,
           x: Math.round(500 + Math.cos(angle) * 360),
           y: Math.round(210 + Math.sin(angle) * 150),
-          radius: 22
+          radius: 26,
+          badge: getShortBadge(node.id),
+          subLabel: truncate(node.name, 16),
+          systems: ['ALL', 'SYS-ANA']
         };
       }
     });
   }
+
+  const subsystemNames = {
+    'ALL': 'Full Laboratory Topology',
+    'SYS-PWR': 'Primary Power Grid (UPS Root)',
+    'SYS-NET': 'High-Speed Data Bus (Switch Root)',
+    'SYS-OPT': 'Thermal & Laser Optics Loop (Chiller Root)',
+    'SYS-ANA': 'Analytical Equipment & Workstations'
+  };
 
   function drawTopologyGraph() {
     const svg = document.getElementById('graph-svg');
@@ -953,9 +976,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const edges = state.graphData.edges || [];
     const sources = (state.graphData.sources || []).map(s => s.assetCode);
+    const activeKey = state.activeGraphKey || 'ALL';
+    const isIsolate = !!state.isolateGraph;
 
     edgesGroup.innerHTML = '';
     nodesGroup.innerHTML = '';
+
+    let visibleNodeCount = 0;
+    let visibleLinkCount = 0;
 
     // 1. Draw directed edges
     edges.forEach(edge => {
@@ -965,6 +993,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const isAffectedEdge = (state.selectedGraphNode === edge.from || state.animatingNodes.has(edge.from)) &&
                              (state.animatingNodes.has(edge.to));
+
+      const inSubsystem = (activeKey === 'ALL') ||
+                          (fromNode.systems && fromNode.systems.includes(activeKey) &&
+                           toNode.systems && toNode.systems.includes(activeKey));
+
+      if (!inSubsystem && isIsolate) {
+        return; // Clutter-free: completely remove edge from view
+      }
+
+      visibleLinkCount++;
 
       const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
       const startX = fromNode.x + Math.cos(angle) * (fromNode.radius + 2);
@@ -977,7 +1015,10 @@ document.addEventListener('DOMContentLoaded', () => {
       line.setAttribute('y1', startY.toFixed(1));
       line.setAttribute('x2', endX.toFixed(1));
       line.setAttribute('y2', endY.toFixed(1));
-      line.setAttribute('class', `svg-edge ${isAffectedEdge ? 'affected' : ''}`);
+
+      let lineClass = `svg-edge ${isAffectedEdge ? 'affected' : ''}`;
+      if (!inSubsystem) lineClass += ' dimmed';
+      line.setAttribute('class', lineClass);
       line.setAttribute('marker-end', isAffectedEdge ? 'url(#arrow-affected)' : 'url(#arrow-normal)');
       edgesGroup.appendChild(line);
     });
@@ -989,42 +1030,66 @@ document.addEventListener('DOMContentLoaded', () => {
       const isAffected = state.animatingNodes.has(node.id) && !isSelected;
       const isSource = sources.includes(node.id);
 
+      const inSubsystem = (activeKey === 'ALL') || (node.systems && node.systems.includes(activeKey));
+
+      if (!inSubsystem && isIsolate) {
+        return; // Clutter-free: completely hide outside nodes
+      }
+
+      visibleNodeCount++;
+
       let statusClass = 'normal';
       if (isFailed) statusClass = 'failed';
       else if (isAffected) statusClass = 'affected';
       else if (isSelected) statusClass = 'selected';
       else if (isSource) statusClass = 'source';
 
+      if (!inSubsystem) statusClass += ' dimmed';
+
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', `node-bubble ${statusClass}`);
       g.setAttribute('data-id', node.id);
       g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
 
+      // Browser tooltip
+      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      title.textContent = `${node.id} — ${node.name}\nSubsystem: ${(node.systems || []).join(', ')}\nClick to evaluate downstream blast radius`;
+      g.appendChild(title);
+
       // Pulse halo circle for smooth CSS keyframe animation
       const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       pulse.setAttribute('class', 'bubble-pulse');
-      pulse.setAttribute('r', node.radius + 12);
+      pulse.setAttribute('r', node.radius + 10);
       g.appendChild(pulse);
 
-      // Main sharp bubble circle
+      // Main sharp bubble circle (scales smoothly on hover with zero vibration)
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('class', 'bubble-circle');
       circle.setAttribute('r', node.radius);
+      circle.setAttribute('cx', '0');
+      circle.setAttribute('cy', '0');
       g.appendChild(circle);
 
-      // Asset code text
+      // Short clean badge centered inside bubble (e.g. UPS, NET, SPEC, COOL)
       const codeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       codeText.setAttribute('class', 'bubble-code');
       codeText.setAttribute('y', '0');
-      codeText.textContent = node.id;
+      codeText.textContent = node.badge || getShortBadge(node.id);
       g.appendChild(codeText);
 
-      // Equipment name text label
+      // Asset code text directly under the bubble
       const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       nameText.setAttribute('class', 'bubble-name');
-      nameText.setAttribute('y', node.radius + 16);
-      nameText.textContent = truncate(node.name, 19);
+      nameText.setAttribute('y', node.radius + 15);
+      nameText.textContent = node.id;
       g.appendChild(nameText);
+
+      // Short equipment description directly under asset code
+      const subText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      subText.setAttribute('class', 'bubble-sub');
+      subText.setAttribute('y', node.radius + 28);
+      subText.textContent = node.subLabel || truncate(node.name, 16);
+      g.appendChild(subText);
 
       // Click event for blast radius inspection
       g.addEventListener('click', async () => {
@@ -1034,6 +1099,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       nodesGroup.appendChild(g);
     });
+
+    // Update Reference Key Status Strip
+    const statusName = document.getElementById('ref-status-name');
+    if (statusName) statusName.textContent = subsystemNames[activeKey] || activeKey;
+    const statusCode = document.getElementById('ref-status-code');
+    if (statusCode) statusCode.textContent = activeKey;
+    const statusCount = document.getElementById('ref-status-count');
+    if (statusCount) statusCount.textContent = visibleNodeCount;
+    const statusLinks = document.getElementById('ref-status-links');
+    if (statusLinks) statusLinks.textContent = visibleLinkCount;
   }
 
   function truncate(str, maxLen) {
@@ -1076,9 +1151,60 @@ Transitive Impact Path:
     btnRefreshGraph.addEventListener('click', () => {
       state.selectedGraphNode = null;
       state.animatingNodes.clear();
+      state.activeGraphKey = 'ALL';
+      state.isolateGraph = false;
+
+      const chk = document.getElementById('chk-isolate-graph');
+      if (chk) chk.checked = false;
+
+      const sel = document.getElementById('select-graph-subsystem');
+      if (sel) sel.value = 'ALL';
+
+      document.querySelectorAll('.ref-chip').forEach(c => {
+        c.classList.toggle('active', c.getAttribute('data-graph-key') === 'ALL');
+      });
+
       drawTopologyGraph();
       const box = document.getElementById('blast-simulation-result');
       if (box) box.textContent = 'Click any equipment bubble above to evaluate its downstream dependents.';
+    });
+  }
+
+  // Reference Key Chips & Dropdown Listeners
+  document.querySelectorAll('.ref-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const key = chip.getAttribute('data-graph-key');
+      if (!key) return;
+      document.querySelectorAll('.ref-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      const select = document.getElementById('select-graph-subsystem');
+      if (select) select.value = key;
+
+      state.activeGraphKey = key;
+      drawTopologyGraph();
+    });
+  });
+
+  const selectGraphSub = document.getElementById('select-graph-subsystem');
+  if (selectGraphSub) {
+    selectGraphSub.addEventListener('change', () => {
+      const key = selectGraphSub.value;
+      state.activeGraphKey = key;
+
+      document.querySelectorAll('.ref-chip').forEach(c => {
+        c.classList.toggle('active', c.getAttribute('data-graph-key') === key);
+      });
+
+      drawTopologyGraph();
+    });
+  }
+
+  const chkIsolate = document.getElementById('chk-isolate-graph');
+  if (chkIsolate) {
+    chkIsolate.addEventListener('change', () => {
+      state.isolateGraph = chkIsolate.checked;
+      drawTopologyGraph();
     });
   }
 

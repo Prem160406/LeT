@@ -300,6 +300,37 @@
           </div>
 
           <div class="canvas-box">
+            <!-- Sub-Graph & Multiple Component Reference Key Bar -->
+            <div class="graph-reference-bar">
+              <div class="ref-key-label">
+                <span class="ref-badge">Reference Key</span>
+              </div>
+              <div class="ref-key-chips">
+                <button type="button" class="ref-chip active" data-graph-key="ALL" title="Full interconnected laboratory dependency topology">All Systems (Full Graph)</button>
+                <button type="button" class="ref-chip" data-graph-key="SYS-PWR" title="Primary Power Grid originating at Main UPS">⚡ Power Grid (SYS-PWR)</button>
+                <button type="button" class="ref-chip" data-graph-key="SYS-NET" title="Data & Gigabit switch sub-network">🌐 Network Bus (SYS-NET)</button>
+                <button type="button" class="ref-chip" data-graph-key="SYS-OPT" title="Chilled water and laser optics sub-system">❄️ Cooling & Optics (SYS-OPT)</button>
+                <button type="button" class="ref-chip" data-graph-key="SYS-ANA" title="Analytical instruments & leaf workstations">🔬 Analytical Fleet (SYS-ANA)</button>
+              </div>
+              <div class="ref-key-tools">
+                <label class="ref-isolate-label">
+                  <input type="checkbox" id="chk-isolate-graph"> Isolate View
+                </label>
+                <select id="select-graph-subsystem" class="ref-select">
+                  <option value="ALL">Reference Key: ALL — Full Interconnected Topology</option>
+                  <option value="SYS-PWR">Key: SYS-PWR — Primary Power Grid (LAB-UPS-01)</option>
+                  <option value="SYS-NET">Key: SYS-NET — High-Speed Data Bus (LAB-NET-SW)</option>
+                  <option value="SYS-OPT">Key: SYS-OPT — Thermal & Optics Loop (LAB-COOL-01)</option>
+                  <option value="SYS-ANA">Key: SYS-ANA — Analytical Workstations</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="ref-status-strip" class="ref-status-strip">
+              <span>Active Sub-Graph: <strong id="ref-status-name">Full Laboratory Topology</strong> (Key: <code id="ref-status-code">ALL</code>)</span>
+              <span>Visible Nodes: <strong id="ref-status-count">7</strong> · Dependency Links: <strong id="ref-status-links">6</strong></span>
+            </div>
+
             <svg id="graph-svg" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMid meet">
               <defs>
                 <marker id="arrow-normal" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
