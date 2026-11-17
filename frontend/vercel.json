@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://let-backend-4qhd.onrender.com/api/:path*"
+    }
+  ]
+}
