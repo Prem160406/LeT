@@ -14,7 +14,8 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-title" style="font-weight: bold; font-size: xx-large;">Lab Diagnostics Engine <p style="font-size: large; font-weight: lighter;">- Real-Time Triage & Calibration</p></div>
+        <div class="brand-title">Lab Equipment Safety & Emergency Triage</div>
+        <div class="brand-sub">Real-Time Failure Prediction & One-Click Emergency Dispatch</div>
       </div>
       <div class="header-actions">
         <!-- DSA Architecture Inspector Toggle -->
@@ -25,13 +26,13 @@
           DSA Spec Sheet
         </button>
         <button id="btn-simulate-root" class="btn btn-outline-danger" title="Simulate catastrophic failure on main power UPS">
-          Simulate UPS Outage
+          Simulate Power Failure
         </button>
-        <button id="btn-undo" class="btn btn-outline-warning" title="O(1) LIFO rollback of most recent transaction">
+        <button id="btn-undo" class="btn btn-outline-warning" title="Revert most recent transaction">
           Undo (<span id="undo-count">0</span>)
         </button>
-        <button id="btn-dispatch" class="btn btn-danger" title="O(log N) extract highest-risk job from Max-Heap">
-          Dispatch Top Urgency
+        <button id="btn-dispatch" class="btn btn-danger" title="Send technicians to resolve highest-risk emergency immediately">
+          Dispatch Top Emergency
         </button>
       </div>
     </div>
@@ -40,13 +41,43 @@
   <!-- Streamlined 3-Section Navigation Bar -->
   <nav class="app-tabs-bar">
     <div class="tabs-inner">
-      <button class="tab-btn active" data-tab="tab-operations">Dashboard & Triage</button>
-      <button class="tab-btn" data-tab="tab-network">Equipment Topology & Safety</button>
-      <button class="tab-btn" data-tab="tab-reports">Audits, Suppliers & Reports</button>
+      <button class="tab-btn active" data-tab="tab-operations">1. Emergencies & Equipment</button>
+      <button class="tab-btn" data-tab="tab-network">2. Equipment Dependency Map</button>
+      <button class="tab-btn" data-tab="tab-reports">3. Health Reports & Suppliers</button>
     </div>
   </nav>
 
   <main class="app-main">
+    <!-- How It Works Visual Flow Banner -->
+    <section class="how-it-works-banner">
+      <div class="hiw-header">
+        <span class="hiw-icon">⚡</span>
+        <div>
+          <h4>How This System Works</h4>
+          <p>Automated priority dispatch and safety dependency graph for laboratory hardware</p>
+        </div>
+      </div>
+      <div class="hiw-steps">
+        <div class="hiw-step">
+          <div class="hiw-step-badge">Step 1</div>
+          <div class="hiw-step-title">Equipment Logs Issue</div>
+          <div class="hiw-step-desc">Hardware drift, inspection delays, and emergency breakdowns are recorded.</div>
+        </div>
+        <div class="hiw-arrow">➔</div>
+        <div class="hiw-step">
+          <div class="hiw-step-badge">Step 2</div>
+          <div class="hiw-step-title">Priority Engine Calculates Risk</div>
+          <div class="hiw-step-desc">Computes real-time risk score from severity, sensor drift, and cascade impact.</div>
+        </div>
+        <div class="hiw-arrow">➔</div>
+        <div class="hiw-step">
+          <div class="hiw-step-badge">Step 3</div>
+          <div class="hiw-step-title">One-Click Dispatch</div>
+          <div class="hiw-step-desc">Dispatches engineers to fix the most critical problem first, with full undo support.</div>
+        </div>
+      </div>
+    </section>
+
     <!-- Live Fleet Operational Metrics -->
     <section class="metrics-row">
       <div class="metric-card" data-dsa="Hash Table (Separate Chaining) | O(1) Lookup">
@@ -144,7 +175,9 @@
 
             <div class="form-group">
               <label for="asset-dependency">Upstream Dependency (Relies On)</label>
-              <input type="text" id="asset-dependency" placeholder="e.g. LAB-UPS-01 or LAB-NET-SW (optional)">
+              <select id="asset-dependency">
+                <option value="">(None - Independent Backbone Equipment)</option>
+              </select>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Register Equipment</button>
@@ -159,14 +192,18 @@
                 <h3>Submit Fault Report</h3>
                 <span class="dsa-badge">Circular Queue Intake</span>
               </div>
+              <p class="panel-desc">Report observed hardware defect, physical drift, or breakdown.</p>
             </div>
             <button type="button" id="btn-fill-demo-report" class="btn btn-sm btn-secondary">Fill Sample</button>
           </div>
           <form id="form-submit-report">
             <div class="form-row">
               <div class="form-group col">
-                <label for="report-asset">Target Equipment Code</label>
-                <input type="text" id="report-asset" placeholder="e.g. LAB-CENT-009" required>
+                <label for="report-asset">Target Equipment</label>
+                <select id="report-asset" required>
+                  <option value="" disabled selected>-- Select Equipment --</option>
+                </select>
+                <input type="text" id="report-asset-custom" placeholder="Or enter custom code (e.g. LAB-PC-099)" style="display: none; margin-top: 6px;">
               </div>
               <div class="form-group col">
                 <label for="report-severity">Severity Rating</label>
@@ -197,7 +234,7 @@
               <input type="text" id="report-desc" placeholder="e.g. Rotor vibration during high-speed cycle" required>
             </div>
 
-            <button type="submit" class="btn btn-warning btn-block">Enqueue & Prioritize</button>
+            <button type="submit" class="btn btn-warning btn-block">Enqueue & Prioritize Emergency</button>
           </form>
         </section>
       </div>
@@ -210,7 +247,7 @@
               <h2>Live Emergency Triage Queue</h2>
               <span class="dsa-badge">Max-Heap Priority Queue</span>
             </div>
-            <p class="panel-desc"><code></code></p>
+            <p class="panel-desc">All emergencies are ordered by computed Risk Score. Dispatching sends engineers to the top emergency first.</p>
           </div>
           <div class="header-actions">
           </div>
@@ -247,28 +284,39 @@
     <!-- ================================================================= -->
     <div id="tab-network" class="tab-pane">
       <div class="cards-grid">
-        <!-- Interactive Graph Canvas -->
+        <!-- Interactive Graph SVG -->
         <section class="panel-card" style="grid-column: span 2;" data-dsa="Graph Adjacency List + Breadth-First Search (BFS) | O(V + E)">
           <div class="panel-head">
             <div>
               <div class="head-with-dsa">
-                <h3>Equipment Dependency Topology</h3>
+                <h3>Interactive Equipment Dependency Map</h3>
                 <span class="dsa-badge">Directed Graph + BFS</span>
               </div>
-              <p class="panel-desc">Click a node to see its blast radius.</p>
+              <p class="panel-desc">Visual map of laboratory hardware dependencies. Click any equipment bubble to evaluate what stops working if it goes down (Blast Radius).</p>
             </div>
             <div class="header-actions">
-              <button id="btn-refresh-graph" class="btn btn-sm btn-secondary">Reset Canvas</button>
+              <button id="btn-refresh-graph" class="btn btn-sm btn-secondary">Reset Map View</button>
             </div>
           </div>
 
           <div class="canvas-box">
-            <canvas id="graph-canvas" width="1100" height="400"></canvas>
+            <svg id="graph-svg" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="arrow-normal" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#8497aa"/>
+                </marker>
+                <marker id="arrow-affected" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#d92d20"/>
+                </marker>
+              </defs>
+              <g id="svg-edges"></g>
+              <g id="svg-nodes"></g>
+            </svg>
             <div class="canvas-legend">
-              <span class="legend-chip"><span class="dot normal"></span> Standard Node</span>
-              <span class="legend-chip"><span class="dot source"></span> Infrastructure Source</span>
-              <span class="legend-chip"><span class="dot failed"></span> Simulated Failure</span>
-              <span class="legend-chip"><span class="dot affected"></span> Affected Dependent</span>
+              <span class="legend-chip"><span class="dot normal"></span> Standard Equipment</span>
+              <span class="legend-chip"><span class="dot source"></span> Main Power / Backbone</span>
+              <span class="legend-chip"><span class="dot failed"></span> Selected / Trigger Failure</span>
+              <span class="legend-chip"><span class="dot affected"></span> Downstream Affected Machine</span>
             </div>
           </div>
 
@@ -276,7 +324,7 @@
             <div class="panel-card" data-dsa="Graph BFS Transitive Impact">
               <h4>Blast Radius Simulation Result</h4>
               <div id="blast-simulation-result" class="code-box">
-                Select an equipment node on the canvas to evaluate its downstream dependents.
+                Click any equipment bubble above to evaluate its downstream dependents.
               </div>
             </div>
 
@@ -288,7 +336,7 @@
 
             <!-- Maintenance Safety Check (What-If Advisor) -->
             <div class="panel-card" data-dsa="Graph BFS + Max-Heap Conflict Check">
-              <h4>Maintenance Safety Check</h4>
+              <h4>Maintenance Safety Check (Can I Turn This Off?)</h4>
               <form id="form-safety-check" style="margin-top: 0.75rem;">
                 <div class="form-group">
                   <label for="select-safety-asset">Select Equipment to Service:</label>

@@ -168,8 +168,45 @@ document.addEventListener('DOMContentLoaded', () => {
       state.assets = await res.json();
       document.getElementById('val-asset-count').textContent = state.assets.length;
       renderAllAssetsTable();
+      populateAssetDropdowns();
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  function populateAssetDropdowns() {
+    const reportSelect = document.getElementById('report-asset');
+    const depSelect = document.getElementById('asset-dependency');
+    const safetySelect = document.getElementById('select-safety-asset');
+    const assets = state.assets || [];
+
+    if (reportSelect) {
+      const currentVal = reportSelect.value;
+      reportSelect.innerHTML = `
+        <option value="" disabled ${!currentVal ? 'selected' : ''}>-- Select Equipment --</option>
+        ${assets.map(a => `<option value="${a.assetCode}">${a.assetCode} — ${a.name}</option>`).join('')}
+        <option value="__custom__">+ Enter custom equipment code...</option>
+      `;
+      if (currentVal && (assets.some(a => a.assetCode === currentVal) || currentVal === '__custom__')) {
+        reportSelect.value = currentVal;
+      }
+    }
+
+    if (depSelect) {
+      const currentVal = depSelect.value;
+      depSelect.innerHTML = `
+        <option value="">(None - Independent Backbone Equipment)</option>
+        ${assets.map(a => `<option value="${a.assetCode}">${a.assetCode} — ${a.name}</option>`).join('')}
+      `;
+      if (currentVal) depSelect.value = currentVal;
+    }
+
+    if (safetySelect && assets.length > 0) {
+      const currentVal = safetySelect.value;
+      safetySelect.innerHTML = assets.map(a => `<option value="${a.assetCode}">${a.assetCode} — ${a.name}</option>`).join('');
+      if (currentVal && assets.some(a => a.assetCode === currentVal)) {
+        safetySelect.value = currentVal;
+      }
     }
   }
 
@@ -545,10 +582,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const formSubmitReport = document.getElementById('form-submit-report');
+  const reportSelect = document.getElementById('report-asset');
+  const customInput = document.getElementById('report-asset-custom');
+
+  if (reportSelect && customInput) {
+    reportSelect.addEventListener('change', () => {
+      if (reportSelect.value === '__custom__') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+        customInput.focus();
+      } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+      }
+    });
+  }
+
   if (formSubmitReport) {
     formSubmitReport.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const assetCode = document.getElementById('report-asset').value.trim();
+      let assetCode = document.getElementById('report-asset').value.trim();
+      if (assetCode === '__custom__' && customInput) {
+        assetCode = customInput.value.trim();
+      }
+      if (!assetCode) {
+        showToast('Please select or specify target equipment', 'danger');
+        return;
+      }
       const severity = parseInt(document.getElementById('report-severity').value, 10) || 3;
       const overdue = parseInt(document.getElementById('report-overdue').value, 10) || 0;
       const deviation = parseFloat(document.getElementById('report-deviation').value) || 0.0;
@@ -574,8 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.undoCount++;
         document.getElementById('undo-count').textContent = state.undoCount;
 
-        showToast(`Report for ${assetCode} prioritized into Max-Heap`, 'success');
+        showToast(`Report for ${assetCode} prioritized into Emergency Queue`, 'success');
         formSubmitReport.reset();
+        if (customInput) customInput.style.display = 'none';
         await refreshAll();
       } catch (err) {
         showToast(err.message, 'danger');
@@ -594,7 +655,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('asset-loc').value = 'Chamber 402, Analytics';
       document.getElementById('asset-calib').value = '25';
       document.getElementById('asset-downtime').value = '4.5';
-      document.getElementById('asset-dependency').value = 'LAB-UPS-01';
+      const depSelect = document.getElementById('asset-dependency');
+      if (depSelect) depSelect.value = 'LAB-UPS-01';
       showToast('Sample HPLC instrument populated into form', 'info');
     });
   }
@@ -602,7 +664,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnFillDemoReport = document.getElementById('btn-fill-demo-report');
   if (btnFillDemoReport) {
     btnFillDemoReport.addEventListener('click', () => {
-      document.getElementById('report-asset').value = 'LAB-SPEC-003';
+      const select = document.getElementById('report-asset');
+      if (select) {
+        select.value = 'LAB-SPEC-003';
+        if (customInput) customInput.style.display = 'none';
+      }
       document.getElementById('report-severity').value = '5';
       document.getElementById('report-overdue').value = '12';
       document.getElementById('report-deviation').value = '6.8';
@@ -839,27 +905,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // INTERACTIVE GRAPH CANVAS & BFS BLAST WAVE
+  // INTERACTIVE VECTOR GRAPH (SVG + CSS BUBBLES) & BFS BLAST RADIUS
   // =========================================================================
-  const canvas = document.getElementById('graph-canvas');
-  const ctx = canvas ? canvas.getContext('2d') : null;
   const nodePositions = {};
 
   function setupNodeCoordinates() {
     const nodes = state.graphData.nodes || [];
-    if (nodes.length === 0 || !canvas) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
+    if (nodes.length === 0) return;
 
     const predefined = {
-      'LAB-UPS-01': { x: 160, y: height / 2, role: 'source' },
-      'LAB-NET-SW': { x: 420, y: height / 2 - 80, role: 'hub' },
-      'LAB-COOL-01': { x: 420, y: height / 2 + 80, role: 'hub' },
-      'LAB-PC-017': { x: 740, y: height / 2 - 130, role: 'leaf' },
-      'LAB-SPEC-003': { x: 740, y: height / 2 - 30, role: 'leaf' },
-      'LAB-LASER-01': { x: 740, y: height / 2 + 80, role: 'leaf' },
-      'LAB-CENT-009': { x: 960, y: height / 2, role: 'leaf' }
+      'LAB-UPS-01': { x: 130, y: 210, role: 'source', radius: 28 },
+      'LAB-NET-SW': { x: 380, y: 120, role: 'hub', radius: 24 },
+      'LAB-COOL-01': { x: 380, y: 300, role: 'hub', radius: 24 },
+      'LAB-PC-017': { x: 680, y: 70, role: 'leaf', radius: 22 },
+      'LAB-SPEC-003': { x: 680, y: 170, role: 'leaf', radius: 22 },
+      'LAB-LASER-01': { x: 680, y: 270, role: 'leaf', radius: 22 },
+      'LAB-CENT-009': { x: 890, y: 210, role: 'leaf', radius: 22 }
     };
 
     nodes.forEach((node, idx) => {
@@ -868,29 +929,33 @@ document.addEventListener('DOMContentLoaded', () => {
           ...node,
           x: predefined[node.id].x,
           y: predefined[node.id].y,
-          radius: predefined[node.id].role === 'source' ? 24 : 18
+          radius: predefined[node.id].radius
         };
       } else {
         const angle = (idx / nodes.length) * 2 * Math.PI;
         nodePositions[node.id] = {
           ...node,
-          x: width / 2 + Math.cos(angle) * (width * 0.35),
-          y: height / 2 + Math.sin(angle) * (height * 0.35),
-          radius: 18
+          x: Math.round(500 + Math.cos(angle) * 360),
+          y: Math.round(210 + Math.sin(angle) * 150),
+          radius: 22
         };
       }
     });
   }
 
-  function drawTopologyGraph(animProgress = 0) {
-    if (!ctx || !canvas) return;
-    setupNodeCoordinates();
+  function drawTopologyGraph() {
+    const svg = document.getElementById('graph-svg');
+    const edgesGroup = document.getElementById('svg-edges');
+    const nodesGroup = document.getElementById('svg-nodes');
+    if (!svg || !edgesGroup || !nodesGroup) return;
 
-    ctx.fillStyle = '#cbd0d4';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setupNodeCoordinates();
 
     const edges = state.graphData.edges || [];
     const sources = (state.graphData.sources || []).map(s => s.assetCode);
+
+    edgesGroup.innerHTML = '';
+    nodesGroup.innerHTML = '';
 
     // 1. Draw directed edges
     edges.forEach(edge => {
@@ -901,104 +966,79 @@ document.addEventListener('DOMContentLoaded', () => {
       const isAffectedEdge = (state.selectedGraphNode === edge.from || state.animatingNodes.has(edge.from)) &&
                              (state.animatingNodes.has(edge.to));
 
-      ctx.beginPath();
-      ctx.moveTo(fromNode.x, fromNode.y);
-      ctx.lineTo(toNode.x, toNode.y);
-      ctx.strokeStyle = isAffectedEdge ? '#d92d20' : '#bfe3f6';
-      ctx.lineWidth = isAffectedEdge ? 3 : 1.5;
-      if (isAffectedEdge) {
-        ctx.setLineDash([6, 4]);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
+      const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+      const startX = fromNode.x + Math.cos(angle) * (fromNode.radius + 2);
+      const startY = fromNode.y + Math.sin(angle) * (fromNode.radius + 2);
+      const endX = toNode.x - Math.cos(angle) * (toNode.radius + 6);
+      const endY = toNode.y - Math.sin(angle) * (toNode.radius + 6);
 
-      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#d92d20' : '#0c2740');
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', startX.toFixed(1));
+      line.setAttribute('y1', startY.toFixed(1));
+      line.setAttribute('x2', endX.toFixed(1));
+      line.setAttribute('y2', endY.toFixed(1));
+      line.setAttribute('class', `svg-edge ${isAffectedEdge ? 'affected' : ''}`);
+      line.setAttribute('marker-end', isAffectedEdge ? 'url(#arrow-affected)' : 'url(#arrow-normal)');
+      edgesGroup.appendChild(line);
     });
 
-    // 2. Draw nodes
+    // 2. Draw nodes (CSS Bubbles)
     Object.values(nodePositions).forEach(node => {
       const isSelected = state.selectedGraphNode === node.id;
       const isFailed = isSelected && state.animatingNodes.size > 0;
       const isAffected = state.animatingNodes.has(node.id) && !isSelected;
       const isSource = sources.includes(node.id);
 
-      if (isFailed || isAffected) {
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius + 8 + Math.sin(animProgress) * 4, 0, 2 * Math.PI);
-        ctx.fillStyle = isFailed ? 'rgba(217, 45, 32, 0.18)' : 'rgba(255, 141, 61, 0.18)';
-        ctx.fill();
-      }
+      let statusClass = 'normal';
+      if (isFailed) statusClass = 'failed';
+      else if (isAffected) statusClass = 'affected';
+      else if (isSelected) statusClass = 'selected';
+      else if (isSource) statusClass = 'source';
 
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', `node-bubble ${statusClass}`);
+      g.setAttribute('data-id', node.id);
+      g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
 
-      if (isFailed) {
-        ctx.fillStyle = '#d92d20';
-      } else if (isAffected) {
-        ctx.fillStyle = '#ff8d3d';
-      } else if (isSource) {
-        ctx.fillStyle = '#0c2740';
-      } else {
-        ctx.fillStyle = '#38bdf8';
-      }
-      ctx.fill();
+      // Pulse halo circle for smooth CSS keyframe animation
+      const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      pulse.setAttribute('class', 'bubble-pulse');
+      pulse.setAttribute('r', node.radius + 12);
+      g.appendChild(pulse);
 
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
+      // Main sharp bubble circle
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', 'bubble-circle');
+      circle.setAttribute('r', node.radius);
+      g.appendChild(circle);
 
-      ctx.fillStyle = '#0c2740';
-      ctx.font = '600 11px "Larsseit", "Plus Jakarta Sans", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(node.id, node.x, node.y);
+      // Asset code text
+      const codeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      codeText.setAttribute('class', 'bubble-code');
+      codeText.setAttribute('y', '0');
+      codeText.textContent = node.id;
+      g.appendChild(codeText);
 
-      ctx.fillStyle = '#0c2740';
-      ctx.font = '600 11px "Larsseit", "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 13);
+      // Equipment name text label
+      const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      nameText.setAttribute('class', 'bubble-name');
+      nameText.setAttribute('y', node.radius + 16);
+      nameText.textContent = truncate(node.name, 19);
+      g.appendChild(nameText);
+
+      // Click event for blast radius inspection
+      g.addEventListener('click', async () => {
+        state.selectedGraphNode = node.id;
+        await simulateNodeBlast(node.id);
+      });
+
+      nodesGroup.appendChild(g);
     });
-  }
-
-  function drawArrowHead(fromX, fromY, toX, toY, radius, color) {
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-    const endX = toX - Math.cos(angle) * (radius + 2);
-    const endY = toY - Math.sin(angle) * (radius + 2);
-
-    ctx.beginPath();
-    ctx.moveTo(endX, endY);
-    ctx.lineTo(endX - 9 * Math.cos(angle - Math.PI / 6), endY - 9 * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(endX - 9 * Math.cos(angle + Math.PI / 6), endY - 9 * Math.sin(angle + Math.PI / 6));
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
   }
 
   function truncate(str, maxLen) {
     if (!str) return '';
     return str.length > maxLen ? str.slice(0, maxLen - 1) + '...' : str;
-  }
-
-  // Click on canvas to inspect blast radius
-  if (canvas) {
-    canvas.addEventListener('click', async (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      let clickedNode = null;
-      for (const [id, pos] of Object.entries(nodePositions)) {
-        const dist = Math.hypot(pos.x - x, pos.y - y);
-        if (dist <= pos.radius + 4) {
-          clickedNode = id;
-          break;
-        }
-      }
-
-      if (clickedNode) {
-        state.selectedGraphNode = clickedNode;
-        await simulateNodeBlast(clickedNode);
-      }
-    });
   }
 
   async function simulateNodeBlast(assetCode) {
@@ -1028,18 +1068,7 @@ Transitive Impact Path:
   function triggerBlastWave(sourceId, affectedIds) {
     state.selectedGraphNode = sourceId;
     state.animatingNodes = new Set(affectedIds);
-
-    let progress = 0;
-    if (state.animationTimer) clearInterval(state.animationTimer);
-
-    state.animationTimer = setInterval(() => {
-      progress += 0.2;
-      drawTopologyGraph(progress);
-      if (progress > 12) {
-        clearInterval(state.animationTimer);
-        state.animationTimer = null;
-      }
-    }, 50);
+    drawTopologyGraph();
   }
 
   const btnRefreshGraph = document.getElementById('btn-refresh-graph');
@@ -1049,7 +1078,7 @@ Transitive Impact Path:
       state.animatingNodes.clear();
       drawTopologyGraph();
       const box = document.getElementById('blast-simulation-result');
-      if (box) box.textContent = 'Select an equipment node above to calculate its transitive blast radius.';
+      if (box) box.textContent = 'Click any equipment bubble above to evaluate its downstream dependents.';
     });
   }
 
