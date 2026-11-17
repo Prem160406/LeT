@@ -290,7 +290,28 @@ void testHashTable() {
         assert(multiStats.maxChainLength >= 2);
         assert(multiStats.averageChainLength >= 1.0);
 
-        std::cout << "[Test 2.5] Collision statistics verification (Empty, Multi, Deletion, Bounds): PASS" << std::endl;
+        // Explicit Rehashing Transition & Key Preservation Verification
+        HashTable rehashTable(11);
+        for (int i = 0; i < 9; ++i) { // 9 elements in 11 buckets
+            rehashTable.insert(Asset("PRE-" + std::to_string(i), "Equipment", "Lab", 1000 + i, 0.0));
+        }
+        HashStats preRehash = rehashTable.getStats();
+        assert(preRehash.bucketCount == 11);
+        assert(preRehash.totalElements == 9);
+
+        // 10th element triggers rehash: loadFactor() is 9/11 (0.818) >= 0.75 -> bucketCount becomes 11 * 2 + 1 = 23
+        rehashTable.insert(Asset("TRIGGER-REHASH", "Equipment", "Lab", 1009, 0.0));
+        HashStats postRehash = rehashTable.getStats();
+        assert(postRehash.bucketCount == 23);
+        assert(postRehash.totalElements == 10);
+        assert(postRehash.loadFactor < 0.75);
+        assert(postRehash.totalCollisions == (postRehash.totalElements - postRehash.occupiedBuckets));
+        for (int i = 0; i < 9; ++i) {
+            assert(rehashTable.find("PRE-" + std::to_string(i)) != nullptr);
+        }
+        assert(rehashTable.find("TRIGGER-REHASH") != nullptr);
+
+        std::cout << "[Test 2.5] Collision statistics verification (Empty, Multi, Deletion, Rehash): PASS" << std::endl;
         std::cout << "          Elements = " << multiStats.totalElements 
                   << " | Occupied Buckets = " << multiStats.occupiedBuckets 
                   << " | Total Collisions = " << multiStats.totalCollisions 

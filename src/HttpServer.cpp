@@ -232,6 +232,24 @@ void HttpServer::start() {
     });
 
     // =========================================================================
+    // GET /api/diagnostics/hash-table — Collision & Occupancy Statistics
+    // =========================================================================
+    server.Get("/api/diagnostics/hash-table", [this](const httplib_single::Request&, httplib_single::Response& res) {
+        HashStats stats = engine.getRegistryStats();
+        std::ostringstream ss;
+        ss << "{"
+           << "\"totalElements\":" << stats.totalElements << ","
+           << "\"bucketCount\":" << stats.bucketCount << ","
+           << "\"occupiedBuckets\":" << stats.occupiedBuckets << ","
+           << "\"totalCollisions\":" << stats.totalCollisions << ","
+           << "\"maxChainLength\":" << stats.maxChainLength << ","
+           << "\"averageChainLength\":" << stats.averageChainLength << ","
+           << "\"loadFactor\":" << stats.loadFactor
+           << "}";
+        res.set_content(ss.str(), "application/json");
+    });
+
+    // =========================================================================
     // GET /api/blast-radius-demo — Standalone Graph BFS/DFS demo
     // =========================================================================
     server.Get("/api/blast-radius-demo", [this](const httplib_single::Request& req, httplib_single::Response& res) {

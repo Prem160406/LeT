@@ -175,6 +175,7 @@ public:
 
     HashTable& getHashTable() { return assetRegistry; }
     const HashTable& getHashTable() const { return assetRegistry; }
+    HashStats getRegistryStats() const { return assetRegistry.getStats(); }
 
     // =========================================================================
     // PIPELINE STEP 5: Blast-Radius Prioritization Integration
