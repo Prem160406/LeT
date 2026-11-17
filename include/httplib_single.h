@@ -16,9 +16,23 @@
  * to prevent data-race hazards across the custom in-memory data structures.
  * ============================================================================
  */
-
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <cerrno>
+
+typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR (-1)
+#define closesocket close
+#define SD_SEND SHUT_WR
+#endif
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -88,13 +102,17 @@ private:
 
 public:
     SingleThreadedServer() : mount_dir("./frontend"), listen_sock(INVALID_SOCKET), is_running(false) {
-        WSADATA wsaData;
-        WSAStartup(MAKEWORD(2, 2), &wsaData);
+        #ifdef _WIN32
+            WSADATA wsaData;
+            WSAStartup(MAKEWORD(2, 2), &wsaData);
+        #endif
     }
 
     ~SingleThreadedServer() {
         stop();
+    #ifdef _WIN32
         WSACleanup();
+    #endif
     }
 
     void Get(const std::string& pattern, Handler handler) {
@@ -126,7 +144,7 @@ public:
             return false;
         }
 
-        BOOL opt = TRUE;
+        int opt = 1;
         setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
 
         sockaddr_in server_addr;
@@ -159,7 +177,11 @@ public:
         // Synchronous single-threaded accept loop
         while (is_running) {
             sockaddr_in client_addr;
-            int client_len = sizeof(client_addr);
+            #ifdef _WIN32
+                int client_len = sizeof(client_addr);
+            #else
+            socklen_t client_len = sizeof(client_addr) ;
+            #endif
             SOCKET client_sock = accept(listen_sock, (sockaddr*)&client_addr, &client_len);
             if (client_sock == INVALID_SOCKET) {
                 if (!is_running) break;
