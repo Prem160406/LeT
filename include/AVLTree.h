@@ -68,6 +68,7 @@ private:
 
     AVLNode* insertNode(AVLNode* node, const CalibrationItem& item, bool& inserted);
     AVLNode* findMinNode(AVLNode* node) const;
+    AVLNode* findMaxNode(AVLNode* node) const;
     AVLNode* removeNode(AVLNode* node, const CalibrationItem& item, bool& removed);
     void destroyTree(AVLNode* node);
 
@@ -94,6 +95,36 @@ public:
      * Time Complexity: O(log N) guaranteed.
      */
     bool remove(long long dueDate, const std::string& assetCode);
+
+    /**
+     * @brief Finds calibration item with the earliest deadline.
+     * Time Complexity: O(log N) traversing to leftmost node.
+     * @return true if found, false if tree is empty.
+     */
+    bool findMin(CalibrationItem& outItem) const;
+
+    /**
+     * @brief Finds calibration item with the latest deadline.
+     * Time Complexity: O(log N) traversing to rightmost node.
+     * @return true if found, false if tree is empty.
+     */
+    bool findMax(CalibrationItem& outItem) const;
+
+    /**
+     * @brief Finds in-order successor (smallest item strictly greater than target).
+     * Time Complexity: O(log N).
+     * @return true if successor exists, false if target is maximum or tree is empty.
+     */
+    bool inorderSuccessor(const CalibrationItem& target, CalibrationItem& outSuccessor) const;
+    bool inorderSuccessor(long long dueDate, const std::string& assetCode, CalibrationItem& outSuccessor) const;
+
+    /**
+     * @brief Finds in-order predecessor (largest item strictly less than target).
+     * Time Complexity: O(log N).
+     * @return true if predecessor exists, false if target is minimum or tree is empty.
+     */
+    bool inorderPredecessor(const CalibrationItem& target, CalibrationItem& outPredecessor) const;
+    bool inorderPredecessor(long long dueDate, const std::string& assetCode, CalibrationItem& outPredecessor) const;
 
     /**
      * @brief Range query: retrieves all calibrations due between startDue and endDue (inclusive).

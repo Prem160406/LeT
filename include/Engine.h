@@ -154,6 +154,19 @@ public:
     AVLTree& getAVLTree() { return calibrationIndex; }
     const AVLTree& getAVLTree() const { return calibrationIndex; }
 
+    bool getEarliestCalibration(CalibrationItem& outItem) const {
+        return calibrationIndex.findMin(outItem);
+    }
+    bool getLatestCalibration(CalibrationItem& outItem) const {
+        return calibrationIndex.findMax(outItem);
+    }
+    bool getNextCalibrationAfter(long long dueDate, const std::string& assetCode, CalibrationItem& outItem) const {
+        return calibrationIndex.inorderSuccessor(dueDate, assetCode, outItem);
+    }
+    bool getPreviousCalibrationBefore(long long dueDate, const std::string& assetCode, CalibrationItem& outItem) const {
+        return calibrationIndex.inorderPredecessor(dueDate, assetCode, outItem);
+    }
+
     CircularQueue& getIntakeQueue() { return intakeBuffer; }
     const CircularQueue& getIntakeQueue() const { return intakeBuffer; }
 
