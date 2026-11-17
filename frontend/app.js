@@ -1114,32 +1114,168 @@ Transitive Impact Path:
 
   async function processChatQuery(query) {
     appendChatMessage(query, 'user');
-    const q = query.toLowerCase();
+    const q = query.toLowerCase().trim();
+    // Normalize query by removing punctuation
+    const cleanQ = q.replace(/[?!.,;:()'"]/g, ' ').replace(/\s+/g, ' ').trim();
 
-    // 1. Worst suppliers / Bad suppliers
-    if (q.includes('supplier') || q.includes('lemon') || q.includes('vendor') || q.includes('worst')) {
+    // 0. Incomplete / Ambiguous queries (e.g. "which", "which is", "what", "help")
+    const shortAmbiguous = ['which', 'which is', 'which are', 'which one', 'what', 'what is', 'what are', 'who', 'who is', 'help'];
+    if (shortAmbiguous.includes(cleanQ) || cleanQ.length <= 2) {
+      let reply = `Please specify what you would like to know about the laboratory:\n` +
+        `• "Which is most faulty?" — Equipment with the highest fault frequency\n` +
+        `• "Which is least faulty?" — Cleanest equipment with zero/fewest faults\n` +
+        `• "Which has the highest downtime?" — Downtime leader (via Merge Sort)\n` +
+        `• "Which is highest risk?" — Top urgency task in Max-Heap triage\n` +
+        `• "Which is a Single Point of Failure?" — Graph BFS blast radius analysis\n` +
+        `• "Which supplier is the worst (Lemon)?" — Vendor quality scorecard\n` +
+        `• "Which asset will fail next?" — Predictive RUL failure forecast`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // Polarity helpers
+    const isLeast = /\b(least|lowest|minimum|min|fewest|safest|healthiest|cleanest)\b/.test(cleanQ);
+    const isMost = /\b(most|highest|maximum|max|worst|top|greatest|leader|critical)\b/.test(cleanQ);
+
+    // 1. Fault Frequency: Most Faulty vs. Least Faulty
+    const isFaultQuery = /\b(fault|faults|faulty|defects|issues|failure count)\b/.test(cleanQ);
+    if (isFaultQuery) {
+      try {
+        const res = await fetch('/api/reports/faulty?sort=faults');
+        const list = await res.json();
+        if (!list || list.length === 0) {
+          appendChatMessage('No equipment records found in the registry.', 'bot');
+          return;
+        }
+
+        if (isLeast) {
+          // Least faulty: find assets with 0 faults or the lowest fault count
+          const zeroFaults = list.filter(item => item.totalFaultCount === 0);
+          const leastItem = list[list.length - 1];
+
+          if (zeroFaults.length > 0) {
+            let reply = `Least Faulty Equipment (Nominal Clean Fleet):\n` +
+              `Found ${zeroFaults.length} equipment unit(s) with 0 logged faults:\n`;
+            zeroFaults.forEach(item => {
+              reply += `• ${item.name} (${item.assetCode}) — Downtime: ${item.totalDowntimeHours}h | Status: NOMINAL\n`;
+            });
+            appendChatMessage(reply, 'bot');
+          } else if (leastItem) {
+            appendChatMessage(`Least Faulty Equipment: ${leastItem.name} (${leastItem.assetCode}) with only ${leastItem.totalFaultCount} logged fault(s) and ${leastItem.totalDowntimeHours}h downtime.`, 'bot');
+          }
+        } else {
+          // Most faulty (default for general fault queries unless "least" specified)
+          const top = list[0];
+          let reply = `Most Faulty Equipment (Fault Frequency Leader via Merge Sort):\n` +
+            `Equipment: ${top.name} (${top.assetCode})\n` +
+            `Total Logged Faults: ${top.totalFaultCount}\n` +
+            `Accumulated Downtime: ${top.totalDowntimeHours} hours\n` +
+            `Location: ${top.location || 'Main Lab'}\n` +
+            `Supplier: ${top.supplier || 'GenericLab OEM'}\n` +
+            `Downstream Blast Impact: ${top.blastRadiusCount} machines`;
+          appendChatMessage(reply, 'bot');
+        }
+      } catch (err) {
+        appendChatMessage('Failed to fetch equipment fault audit.', 'bot');
+      }
+      return;
+    }
+
+    // 2. Downtime: Highest vs. Lowest Downtime
+    const isDowntimeQuery = /\b(downtime|offline|outage|hours)\b/.test(cleanQ);
+    if (isDowntimeQuery) {
+      try {
+        const res = await fetch('/api/reports/faulty?sort=downtime');
+        const list = await res.json();
+        if (!list || list.length === 0) {
+          appendChatMessage('No downtime audit records available.', 'bot');
+          return;
+        }
+
+        if (isLeast) {
+          const least = list[list.length - 1];
+          appendChatMessage(`Lowest Downtime Equipment: ${least.name} (${least.assetCode}) with only ${least.totalDowntimeHours}h accumulated downtime (${least.totalFaultCount} faults).`, 'bot');
+        } else {
+          const top = list[0];
+          appendChatMessage(`Highest Downtime Equipment (Downtime Leader via Merge Sort):\n` +
+            `Equipment: ${top.name} (${top.assetCode})\n` +
+            `Accumulated Downtime: ${top.totalDowntimeHours} hours\n` +
+            `Faults: ${top.totalFaultCount} | Supplier: ${top.supplier || 'Standard Lab'}`, 'bot');
+        }
+      } catch (err) {
+        appendChatMessage('Failed to fetch downtime audit.', 'bot');
+      }
+      return;
+    }
+
+    // 3. Risk / Triage: Highest Risk vs. Lowest Risk in Max-Heap
+    const isRiskQuery = /\b(risk|urgency|urgent|emergency|priorit|triage)\b/.test(cleanQ);
+    if (isRiskQuery) {
+      try {
+        const res = await fetch('/api/triage');
+        const tasks = await res.json();
+        if (!tasks || tasks.length === 0) {
+          appendChatMessage('Triage Queue is currently empty. No emergency jobs pending.', 'bot');
+          return;
+        }
+
+        if (isLeast) {
+          const lowest = tasks[tasks.length - 1];
+          appendChatMessage(`Lowest Risk Triage Task: [${lowest.taskId}] ${lowest.assetName} (${lowest.assetCode})\n` +
+            `Computed Risk Score: ${lowest.riskScore.toFixed(2)} | Severity: ${lowest.severity} | Overdue: ${lowest.daysOverdue}d`, 'bot');
+        } else {
+          const highest = tasks[0];
+          appendChatMessage(`Highest Urgency Job (Max-Heap Root — Dispatches First):\n` +
+            `Task ID: ${highest.taskId} — ${highest.assetName} (${highest.assetCode})\n` +
+            `Effective Risk Score: ${highest.riskScore.toFixed(2)} (Base Risk factored with ${highest.blastMultiplier}x Blast Multiplier)\n` +
+            `Severity: ${highest.severity}/5 | Overdue: ${highest.daysOverdue} days | Drift Velocity: ${highest.driftVelocity} mm/s\n` +
+            `Description: ${highest.description}`, 'bot');
+        }
+      } catch (err) {
+        appendChatMessage('Failed to query live Max-Heap triage queue.', 'bot');
+      }
+      return;
+    }
+
+    // 4. Supplier Quality / Lemon Scorecard (Best vs. Worst)
+    const isSupplierQuery = /\b(supplier|suppliers|vendor|vendors|lemon|lemons|manufacturer)\b/.test(cleanQ) || (isMost && /\b(quality|reliable)\b/.test(cleanQ));
+    if (isSupplierQuery) {
       try {
         const res = await fetch('/api/reports/suppliers');
         const suppliers = await res.json();
-        const lemon = suppliers.find(s => s.isLemon);
-
-        let reply = `Supplier Quality Analysis (via Lemon Scorecard):\n`;
-        suppliers.forEach(s => {
-          reply += `• ${s.supplierName}: Score ${s.score.toFixed(1)}/100 (${s.tier})\n  Faults: ${s.totalFaults}, Drift: ${s.avgDrift.toFixed(3)} mm/s\n`;
-        });
-
-        if (lemon) {
-          reply += `\nDEFECTIVE VENDOR ALERT: "${lemon.supplierName}" has a reliability score of only ${lemon.score.toFixed(1)}/100 with ${lemon.totalFaults} logged faults.\nRecommendation: File an immediate warranty claim and pause procurement.`;
+        if (!suppliers || suppliers.length === 0) {
+          appendChatMessage('No supplier data on file.', 'bot');
+          return;
         }
-        appendChatMessage(reply, 'bot');
+
+        const sortedSuppliers = [...suppliers].sort((a, b) => b.score - a.score);
+        const best = sortedSuppliers[0];
+        const lemon = suppliers.find(s => s.isLemon) || sortedSuppliers[sortedSuppliers.length - 1];
+
+        if (isLeast || cleanQ.includes('best') || cleanQ.includes('top') || cleanQ.includes('highest')) {
+          appendChatMessage(`Top Rated Supplier (Tier A Certified):\n` +
+            `• ${best.supplierName}: Score ${best.score.toFixed(1)}/100 (Tier ${best.tier})\n` +
+            `  Logged Faults: ${best.totalFaults} | Avg Drift: ${best.avgDrift.toFixed(3)} mm/s | Downtime: ${best.avgDowntime}h\n` +
+            `  Recommendation: ${best.recommendation}`, 'bot');
+        } else {
+          let reply = `Supplier Quality Analysis (via Lemon Scorecard):\n`;
+          suppliers.forEach(s => {
+            reply += `• ${s.supplierName}: Score ${s.score.toFixed(1)}/100 (${s.tier})\n  Faults: ${s.totalFaults}, Drift: ${s.avgDrift.toFixed(3)} mm/s\n`;
+          });
+          if (lemon && lemon.isLemon) {
+            reply += `\nDEFECTIVE VENDOR ALERT: "${lemon.supplierName}" has a reliability score of only ${lemon.score.toFixed(1)}/100 with ${lemon.totalFaults} logged faults.\nRecommendation: File an immediate warranty claim and pause procurement.`;
+          }
+          appendChatMessage(reply, 'bot');
+        }
       } catch (err) {
         appendChatMessage('Failed to retrieve supplier reliability data.', 'bot');
       }
       return;
     }
 
-    // 2. Predict next failure / Next expected fault / RUL
-    if (q.includes('next') || q.includes('predict') || q.includes('expect') || q.includes('rul') || q.includes('fail')) {
+    // 5. Predict Next Failure / Remaining Useful Life (RUL)
+    const isFailureQuery = /\b(next|predict|expect|rul|ettf|fail|breach|tolerance)\b/.test(cleanQ);
+    if (isFailureQuery) {
       try {
         const res = await fetch('/api/reports/faulty?sort=downtime');
         const list = await res.json();
@@ -1169,33 +1305,59 @@ Transitive Impact Path:
       return;
     }
 
-    // 3. Most faults / Highest downtime
-    if (q.includes('most fault') || q.includes('downtime') || q.includes('who has')) {
+    // 6. Single Point of Failure (SPOF) / Blast Radius / Dependency Graph
+    const isSpofQuery = /\b(spof|single point|blast|cascade|critical asset|source|depend)\b/.test(cleanQ);
+    if (isSpofQuery) {
       try {
-        const res = await fetch('/api/reports/faulty?sort=faults');
-        const list = await res.json();
-        if (list.length > 0) {
-          const top = list[0];
-          let reply = `Fault Frequency Leader (via custom Merge Sort):\n` +
-            `Equipment: ${top.name} (${top.assetCode})\n` +
-            `Total Logged Faults: ${top.totalFaultCount}\n` +
-            `Accumulated Downtime: ${top.totalDowntimeHours} hours\n` +
-            `Supplier: ${top.supplier || 'Standard Lab Corp'}\n` +
-            `Blast Radius: ${top.blastRadiusCount} machines`;
+        const res = await fetch('/api/reports/sources');
+        const data = await res.json();
+        const sources = data.sources || [];
+        const spofs = sources.filter(s => s.criticality.includes('CRITICAL') || s.totalBlastRadius >= 3);
+
+        if (spofs.length > 0) {
+          let reply = `Critical Single Points of Failure (via Graph BFS):\n`;
+          spofs.forEach(s => {
+            reply += `• [${s.assetCode}] ${s.name}: Blast Radius = ${s.totalBlastRadius} machines (${s.criticality})\n`;
+          });
+          reply += `Recommendation: Prioritize redundant power/network links to eliminate failure cascades.`;
           appendChatMessage(reply, 'bot');
+        } else if (sources.length > 0) {
+          const top = sources[0];
+          appendChatMessage(`Top Dependency Source: [${top.assetCode}] ${top.name} with blast radius affecting ${top.totalBlastRadius} machines.`, 'bot');
         } else {
-          appendChatMessage('No faulty equipment records on file.', 'bot');
+          appendChatMessage('No dependency cascades found in the graph.', 'bot');
         }
       } catch (err) {
-        appendChatMessage('Failed to fetch downtime audit.', 'bot');
+        appendChatMessage('Failed to query dependency graph blast radius.', 'bot');
       }
       return;
     }
 
-    // 4. Safe to service / What-if maintenance
-    if (q.includes('service') || q.includes('safe') || q.includes('chiller') || q.includes('cool')) {
+    // 7. Calibration Due / Schedule
+    const isCalibQuery = /\b(calib|calibration|due|schedule|overdue)\b/.test(cleanQ);
+    if (isCalibQuery) {
       try {
-        const target = q.includes('ups') ? 'LAB-UPS-01' : 'LAB-COOL-01';
+        const res = await fetch('/api/calibrations?days=30');
+        const items = await res.json();
+        if (items && items.length > 0) {
+          let reply = `Upcoming Calibrations (via AVL Tree Range Query):\n`;
+          items.forEach(c => {
+            reply += `• [${c.assetCode}] ${c.equipmentName}: Due in ${c.daysUntilDue} day(s) (${c.status})\n`;
+          });
+          appendChatMessage(reply, 'bot');
+        } else {
+          appendChatMessage('No assets require calibration within the next 30 days.', 'bot');
+        }
+      } catch (err) {
+        appendChatMessage('Failed to query AVL calibration index.', 'bot');
+      }
+      return;
+    }
+
+    // 8. Safe to service / What-if maintenance
+    if (cleanQ.includes('service') || cleanQ.includes('safe') || cleanQ.includes('chiller') || cleanQ.includes('cool')) {
+      try {
+        const target = cleanQ.includes('ups') ? 'LAB-UPS-01' : 'LAB-COOL-01';
         const res = await fetch(`/api/what-if/service?asset=${target}`);
         const data = await res.json();
         let reply = `Maintenance Window Evaluation for ${data.assetName} (${data.assetCode}):\n` +
@@ -1209,8 +1371,8 @@ Transitive Impact Path:
       return;
     }
 
-    // 5. Dispatch top job action
-    if (q.includes('dispatch') || q.includes('resolve')) {
+    // 9. Dispatch top job action
+    if (cleanQ.includes('dispatch') || cleanQ.includes('resolve') || cleanQ.includes('pop job')) {
       try {
         const res = await fetch('/api/dispatch', { method: 'POST' });
         const data = await res.json();
@@ -1231,8 +1393,8 @@ Transitive Impact Path:
       return;
     }
 
-    // 6. Explain drift / latest repaired fault
-    if (q.includes('drift') || q.includes('latest') || q.includes('tell us') || q.includes('repair')) {
+    // 10. Explain drift / measurement deviation
+    if (cleanQ.includes('drift') || cleanQ.includes('tell us') || cleanQ.includes('repair') || cleanQ.includes('formula')) {
       let reply = `Drift Velocity & Trend Explainability:\n` +
         `• Measurement Drift is computed in the Doubly Linked List via linear interpolation: Delta(Dev) / Delta(Time).\n` +
         `• A positive drift (+0.05 mm/s) indicates progressive mechanical wear or photodetector degradation.\n` +
@@ -1242,8 +1404,36 @@ Transitive Impact Path:
       return;
     }
 
-    // Default Fallback
-    appendChatMessage(`I parsed your request regarding "${query}". You can query me about:\n• "Which suppliers are bad?" (Lemon Scorecard)\n• "Predict next failure" (RUL Forecast)\n• "Who has the most faults?" (Downtime Audit)\n• "Can I safely service LAB-COOL-01?" (Graph BFS Impact)\n• "Dispatch top job" (Max-Heap Action)`, 'bot');
+    // 11. Lab Overview / Fleet Summary
+    if (cleanQ.includes('overview') || cleanQ.includes('summary') || cleanQ.includes('status') || cleanQ.includes('health')) {
+      try {
+        const res = await fetch('/api/assets');
+        const assets = await res.json();
+        const total = assets.length;
+        const faulty = assets.filter(a => a.totalFaultCount > 0).length;
+        appendChatMessage(`Lab Operations Overview:\n` +
+          `• Total Assets in Registry: ${total} (Indexed in Hash Table & AVL Tree)\n` +
+          `• Faulty Equipment: ${faulty} unit(s) requiring attention\n` +
+          `• Active Triage Tasks: ${state.triageTasks ? state.triageTasks.length : 0} job(s) in Max-Heap\n` +
+          `• Single Points of Failure: LAB-UPS-01 (Blast Radius: 5 machines)\n` +
+          `Ask me "Which is most faulty?" or "Predict next failure" for details!`, 'bot');
+      } catch (err) {
+        appendChatMessage('Failed to compile lab operations summary.', 'bot');
+      }
+      return;
+    }
+
+    // 12. Intelligent Fallback with Specific Suggestions
+    appendChatMessage(`I parsed your request regarding "${query}".\n\n` +
+      `Here are specific questions I can answer directly:\n` +
+      `• "Which is most faulty?" (Fault frequency leader via Merge Sort)\n` +
+      `• "Which is least faulty?" (Clean equipment with 0 faults)\n` +
+      `• "Which is highest risk?" (Max-Heap triage root)\n` +
+      `• "Which machine is a Single Point of Failure?" (Graph BFS SPOF)\n` +
+      `• "Which supplier is the worst?" (Lemon Scorecard)\n` +
+      `• "Predict next failure" (Remaining Useful Life Forecast)\n` +
+      `• "Can I safely service LAB-COOL-01?" (Maintenance Safety Advisor)\n` +
+      `• "Dispatch top job" (Max-Heap dispatch action)`, 'bot');
   }
 
   // =========================================================================
