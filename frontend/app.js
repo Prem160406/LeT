@@ -1115,7 +1115,26 @@ Transitive Impact Path:
   async function processChatQuery(query) {
     appendChatMessage(query, 'user');
     const q = query.toLowerCase().trim();
-    // Normalize query by removing punctuation
+
+    // 1. Try server-side native C++ Copilot Engine
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.reply) {
+          appendChatMessage(data.reply, 'bot', data.isCode);
+          return;
+        }
+      }
+    } catch (err) {
+      // Fall through to client-side intent resolution
+    }
+
+    // 2. Client-side intent resolution (offline fallback)
     const cleanQ = q.replace(/[?!.,;:()'"]/g, ' ').replace(/\s+/g, ' ').trim();
 
     // 0. Incomplete / Ambiguous queries (e.g. "which", "which is", "what", "help")

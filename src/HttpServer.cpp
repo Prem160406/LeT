@@ -21,6 +21,10 @@
 #include <sstream>
 #include <iostream>
 #include <ctime>
+#include <vector>
+#include <algorithm>
+#include <cctype>
+#include <cmath>
 
 // Minimal JSON parsing helpers for standard key-value extraction
 static std::string extractJsonString(const std::string& json, const std::string& key) {
@@ -59,6 +63,21 @@ static long long extractJsonLong(const std::string& json, const std::string& key
 
 static int extractJsonInt(const std::string& json, const std::string& key) {
     return static_cast<int>(extractJsonDouble(json, key));
+}
+
+static std::string escapeJson(const std::string& input) {
+    std::ostringstream ss;
+    for (char c : input) {
+        if (c == '"') ss << "\\\"";
+        else if (c == '\\') ss << "\\\\";
+        else if (c == '\b') ss << "\\b";
+        else if (c == '\f') ss << "\\f";
+        else if (c == '\n') ss << "\\n";
+        else if (c == '\r') ss << "\\r";
+        else if (c == '\t') ss << "\\t";
+        else ss << c;
+    }
+    return ss.str();
 }
 
 HttpServer::HttpServer(Engine& eng, int p)
@@ -229,6 +248,304 @@ void HttpServer::start() {
             res.status = 400;
             res.set_content("{\"status\":\"error\",\"message\":\"Undo stack is empty.\",\"remainingUndo\":0}", "application/json");
         }
+    });
+
+    // =========================================================================
+    // POST /api/chat — Intelligent DSA Copilot Query Engine
+    // =========================================================================
+    server.Post("/api/chat", [this](const httplib_single::Request& req, httplib_single::Response& res) {
+        std::string rawQuery = extractJsonString(req.body, "query");
+        if (rawQuery.empty()) {
+            res.status = 400;
+            res.set_content("{\"status\":\"error\",\"message\":\"Empty query\"}", "application/json");
+            return;
+        }
+
+        // Lowercase and sanitize query
+        std::string q = rawQuery;
+        for (char& c : q) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+        std::string cleanQ;
+        for (char c : q) {
+            if (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || std::isspace(static_cast<unsigned char>(c))) {
+                cleanQ += c;
+            } else {
+                cleanQ += ' ';
+            }
+        }
+
+        std::stringstream ssTokens(cleanQ);
+        std::string word;
+        std::vector<std::string> tokens;
+        while (ssTokens >> word) tokens.push_back(word);
+
+        auto hasWord = [&](const std::string& target) {
+            for (const auto& t : tokens) {
+                if (t == target) return true;
+            }
+            return false;
+        };
+
+        auto hasSub = [&](const std::string& target) {
+            return cleanQ.find(target) != std::string::npos;
+        };
+
+        bool isLeast = hasWord("least") || hasWord("lowest") || hasWord("min") || hasWord("minimum") ||
+                       hasWord("fewest") || hasWord("safest") || hasWord("healthiest") || hasWord("cleanest");
+        bool isMost = hasWord("most") || hasWord("highest") || hasWord("max") || hasWord("maximum") ||
+                      hasWord("worst") || hasWord("top") || hasWord("greatest") || hasWord("critical");
+        (void)isMost;
+
+        std::string responseText;
+        bool isCode = false;
+
+        // 0. Handle Incomplete / Ambiguous Queries (e.g. "which", "which is", "what", "help")
+        if (tokens.empty() || (tokens.size() <= 2 && (hasWord("which") || hasWord("what") || hasWord("who") || hasWord("help") || hasWord("show")))) {
+            responseText = "Please specify what you would like to know about the laboratory:\n"
+                           "• \"Which is most faulty?\" — Equipment with the highest logged faults\n"
+                           "• \"Which is least faulty?\" — Cleanest equipment with zero/fewest faults\n"
+                           "• \"Which has the highest downtime?\" — Downtime leader (via Merge Sort)\n"
+                           "• \"Which is highest risk?\" — Top urgency task in Max-Heap triage\n"
+                           "• \"Which is a Single Point of Failure?\" — Graph BFS blast radius analysis\n"
+                           "• \"Which supplier is the worst (Lemon)?\" — Vendor quality scorecard\n"
+                           "• \"Which asset will fail next?\" — Predictive RUL failure forecast";
+        }
+        // 1. Fault Query (Most vs Least Faulty)
+        else if (hasWord("fault") || hasWord("faults") || hasWord("faulty") || hasWord("defect") || hasWord("defects") || hasWord("issues")) {
+            CustomArray<Asset*> faultyAssets;
+            engine.getFaultyEquipmentReport(SORT_BY_FAULT_COUNT_DESC, faultyAssets);
+
+            if (isLeast) {
+                std::vector<Asset*> cleanAssets;
+                for (size_t i = 0; i < faultyAssets.size(); ++i) {
+                    if (faultyAssets[i]->totalFaultCount == 0) cleanAssets.push_back(faultyAssets[i]);
+                }
+                std::ostringstream rep;
+                if (!cleanAssets.empty()) {
+                    rep << "Least Faulty Equipment (Nominal Clean Fleet):\n"
+                        << "Found " << cleanAssets.size() << " unit(s) with 0 logged faults:\n";
+                    for (auto* a : cleanAssets) {
+                        rep << "• " << a->name << " (" << a->assetCode << ") — Downtime: " << a->totalDowntimeHours << "h | Status: NOMINAL\n";
+                    }
+                } else if (faultyAssets.size() > 0) {
+                    Asset* lowest = faultyAssets[faultyAssets.size() - 1];
+                    rep << "Least Faulty Equipment: " << lowest->name << " (" << lowest->assetCode << ") with " << lowest->totalFaultCount << " logged fault(s).";
+                }
+                responseText = rep.str();
+            } else {
+                if (faultyAssets.size() > 0) {
+                    Asset* top = faultyAssets[0];
+                    int blast = engine.getGraph().getBlastRadiusCount(top->assetCode);
+                    std::ostringstream rep;
+                    rep << "Most Faulty Equipment (Fault Frequency Leader via Merge Sort):\n"
+                        << "Equipment: " << top->name << " (" << top->assetCode << ")\n"
+                        << "Total Logged Faults: " << top->totalFaultCount << "\n"
+                        << "Accumulated Downtime: " << top->totalDowntimeHours << " hours\n"
+                        << "Location: " << top->location << "\n"
+                        << "Supplier: " << top->supplier << "\n"
+                        << "Downstream Blast Impact: " << blast << " machines";
+                    responseText = rep.str();
+                } else {
+                    responseText = "No equipment faults recorded on file.";
+                }
+            }
+        }
+        // 2. Downtime Query (Highest vs Lowest Downtime)
+        else if (hasWord("downtime") || hasWord("offline") || hasWord("outage") || hasWord("hours")) {
+            CustomArray<Asset*> assetsByDowntime;
+            engine.getFaultyEquipmentReport(SORT_BY_DOWNTIME_DESC, assetsByDowntime);
+            if (assetsByDowntime.size() > 0) {
+                if (isLeast) {
+                    Asset* lowest = assetsByDowntime[assetsByDowntime.size() - 1];
+                    std::ostringstream rep;
+                    rep << "Lowest Downtime Equipment: " << lowest->name << " (" << lowest->assetCode
+                        << ") with only " << lowest->totalDowntimeHours << "h downtime (" << lowest->totalFaultCount << " faults).";
+                    responseText = rep.str();
+                } else {
+                    Asset* top = assetsByDowntime[0];
+                    std::ostringstream rep;
+                    rep << "Highest Downtime Equipment (Downtime Leader via Merge Sort):\n"
+                        << "Equipment: " << top->name << " (" << top->assetCode << ")\n"
+                        << "Accumulated Downtime: " << top->totalDowntimeHours << " hours\n"
+                        << "Faults: " << top->totalFaultCount << " | Supplier: " << top->supplier;
+                    responseText = rep.str();
+                }
+            } else {
+                responseText = "No downtime records available.";
+            }
+        }
+        // 3. Risk / Triage Queue Query (Highest vs Lowest Risk)
+        else if (hasWord("risk") || hasWord("urgent") || hasWord("urgency") || hasWord("emergency") || hasWord("triage") || hasWord("priority")) {
+            CustomArray<TriageTask> tasks;
+            engine.getTriageTasksSnapshot(tasks);
+            if (tasks.empty()) {
+                responseText = "Triage Queue is currently empty. No emergency jobs pending.";
+            } else {
+                if (isLeast) {
+                    const TriageTask& lowest = tasks[tasks.size() - 1];
+                    std::ostringstream rep;
+                    rep << "Lowest Risk Triage Task: [" << lowest.taskId << "] " << lowest.assetName << " (" << lowest.assetCode << ")\n"
+                        << "Computed Risk Score: " << lowest.riskScore << " | Severity: " << lowest.severity << " | Overdue: " << lowest.daysOverdue << "d";
+                    responseText = rep.str();
+                } else {
+                    const TriageTask& highest = tasks[0];
+                    std::ostringstream rep;
+                    rep << "Highest Urgency Job (Max-Heap Root — Dispatches First):\n"
+                        << "Task ID: " << highest.taskId << " — " << highest.assetName << " (" << highest.assetCode << ")\n"
+                        << "Effective Risk Score: " << highest.riskScore << " (Base Risk factored with " << highest.blastMultiplier << "x Blast Multiplier)\n"
+                        << "Severity: " << highest.severity << "/5 | Overdue: " << highest.daysOverdue << " days | Drift: " << highest.driftVelocity << " mm/s\n"
+                        << "Description: " << highest.description;
+                    responseText = rep.str();
+                }
+            }
+        }
+        // 4. Specific Entity Lookup (by Asset Code or Name keyword)
+        else if (hasSub("lab-") || hasWord("ups") || hasWord("switch") || hasWord("centrifuge") ||
+                 hasWord("spectrometer") || hasWord("chiller") || hasWord("laser") || hasWord("workstation")) {
+            CustomArray<Asset*> allAssets;
+            engine.getAllAssets(allAssets);
+            Asset* matched = nullptr;
+
+            for (size_t i = 0; i < allAssets.size(); ++i) {
+                std::string codeLower = allAssets[i]->assetCode;
+                std::string nameLower = allAssets[i]->name;
+                for (char& c : codeLower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                for (char& c : nameLower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+                if (hasSub(codeLower)) { matched = allAssets[i]; break; }
+                if (hasWord("ups") && codeLower.find("ups") != std::string::npos) { matched = allAssets[i]; break; }
+                if (hasWord("switch") && codeLower.find("net-sw") != std::string::npos) { matched = allAssets[i]; break; }
+                if (hasWord("centrifuge") && codeLower.find("cent") != std::string::npos) { matched = allAssets[i]; break; }
+                if (hasWord("spectrometer") && codeLower.find("spec") != std::string::npos) { matched = allAssets[i]; break; }
+                if (hasWord("chiller") && codeLower.find("cool") != std::string::npos) { matched = allAssets[i]; break; }
+                if (hasWord("laser") && codeLower.find("laser") != std::string::npos) { matched = allAssets[i]; break; }
+                if (hasWord("workstation") && codeLower.find("pc") != std::string::npos) { matched = allAssets[i]; break; }
+            }
+
+            if (matched) {
+                int blast = engine.getGraph().getBlastRadiusCount(matched->assetCode);
+                double latestDev = 0.0, latestDrift = 0.0;
+                const HistoryEntry* latest = matched->history->getLatestEntry();
+                if (latest) {
+                    latestDev = latest->measuredDeviation;
+                    latestDrift = latest->computedDrift;
+                }
+                std::ostringstream rep;
+                rep << "Equipment Diagnostic Report for " << matched->name << " (" << matched->assetCode << "):\n"
+                    << "• Location: " << matched->location << " | Supplier: " << matched->supplier << "\n"
+                    << "• Logged Faults: " << matched->totalFaultCount << " | Total Downtime: " << matched->totalDowntimeHours << "h\n"
+                    << "• Latest Sensor Deviation: " << latestDev << " mm (Drift Velocity: " << (latestDrift >= 0 ? "+" : "") << latestDrift << " mm/s)\n"
+                    << "• Transitive Blast Radius: " << blast << " downstream dependent(s)\n"
+                    << "• Next Calibration Due: in " << matched->nextCalibrationDue << " days";
+                responseText = rep.str();
+            } else {
+                responseText = "Could not find matching equipment in the Hash Table asset registry.";
+            }
+        }
+        // 5. Single Point of Failure (SPOF) / Graph Blast Radius
+        else if (hasWord("spof") || hasSub("single point") || hasWord("blast") || hasWord("cascade") || hasWord("depend")) {
+            CustomArray<SourceAnalysisInfo> sources;
+            engine.getSourceEquipmentReport(sources);
+            std::ostringstream rep;
+            rep << "Critical Single Points of Failure (via Graph BFS):\n";
+            int count = 0;
+            for (size_t i = 0; i < sources.size(); ++i) {
+                Asset* a = engine.getAsset(sources[i].assetCode);
+                std::string aName = a ? a->name : sources[i].assetCode;
+                if (sources[i].criticality.find("CRITICAL") != std::string::npos || sources[i].totalBlastRadius >= 3) {
+                    rep << "• [" << sources[i].assetCode << "] " << aName
+                        << ": Blast Radius = " << sources[i].totalBlastRadius << " machines (" << sources[i].criticality << ")\n";
+                    ++count;
+                }
+            }
+            if (count > 0) {
+                rep << "Recommendation: Prioritize redundant power/network links to eliminate failure cascades.";
+            } else if (sources.size() > 0) {
+                Asset* a0 = engine.getAsset(sources[0].assetCode);
+                std::string a0Name = a0 ? a0->name : sources[0].assetCode;
+                rep << "Top Source: [" << sources[0].assetCode << "] " << a0Name << " with blast radius of " << sources[0].totalBlastRadius << " machines.";
+            } else {
+                rep << "No dependency cascades found.";
+            }
+            responseText = rep.str();
+        }
+        // 6. Predict Failure / RUL
+        else if (hasWord("predict") || hasWord("next") || hasWord("expect") || hasWord("rul") || hasWord("fail") || hasWord("failure")) {
+            CustomArray<Asset*> assetsByDowntime;
+            engine.getFaultyEquipmentReport(SORT_BY_DOWNTIME_DESC, assetsByDowntime);
+            if (!assetsByDowntime.empty()) {
+                Asset* crit = nullptr;
+                for (size_t i = 0; i < assetsByDowntime.size(); ++i) {
+                    const HistoryEntry* h = assetsByDowntime[i]->history->getLatestEntry();
+                    if (h && std::abs(h->computedDrift) > 0.10) {
+                        crit = assetsByDowntime[i];
+                        break;
+                    }
+                }
+                if (!crit) crit = assetsByDowntime[0];
+                double dev = 0.0, drift = 0.0;
+                const HistoryEntry* h = crit->history->getLatestEntry();
+                if (h) { dev = h->measuredDeviation; drift = h->computedDrift; }
+                double margin = std::max(0.0, 5.0 - std::abs(dev));
+                double ettf = std::abs(drift) > 0.0001 ? (margin / std::abs(drift)) : 999.0;
+
+                std::ostringstream rep;
+                rep << "Predictive RUL Failure Forecast:\n"
+                    << "Asset: " << crit->name << " (" << crit->assetCode << ")\n"
+                    << "Current Deviation: " << dev << " mm (Tolerance: 5.0 mm)\n"
+                    << "Drift Velocity: " << (drift >= 0 ? "+" : "") << drift << " mm/s\n"
+                    << "Safe Margin Remaining: " << margin << " mm\n"
+                    << "Estimated Time to Critical Failure: " << (ettf <= 3.0 ? "IMMINENT (< 3 days)" : (std::to_string(static_cast<int>(ettf)) + " days")) << "\n\n"
+                    << "Trend Progression:\n"
+                    << "[Baseline 0.0mm] ───> [Dev " << dev << "mm] ───> [BREACH 5.0mm]";
+                responseText = rep.str();
+                isCode = true;
+            } else {
+                responseText = "All laboratory equipment is operating within nominal safe margins.";
+            }
+        }
+        // 7. Calibration Due Queries
+        else if (hasWord("calib") || hasWord("calibration") || hasWord("due") || hasWord("schedule")) {
+            CustomArray<CalibrationItem> upcoming;
+            engine.getUpcomingCalibrations(0, 30, upcoming);
+            if (!upcoming.empty()) {
+                std::ostringstream rep;
+                rep << "Upcoming Calibrations (via AVL Tree Range Query):\n";
+                for (size_t i = 0; i < upcoming.size(); ++i) {
+                    rep << "• [" << upcoming[i].assetCode << "] " << upcoming[i].assetName
+                        << ": Due in " << upcoming[i].dueDate << " day(s)\n";
+                }
+                responseText = rep.str();
+            } else {
+                responseText = "No assets require calibration within the next 30 days.";
+            }
+        }
+        // 8. Explain Drift
+        else if (hasWord("drift") || hasWord("velocity") || hasWord("formula") || hasWord("interpolation")) {
+            responseText = "Drift Velocity & Trend Explainability:\n"
+                           "• Measurement Drift is computed in the Doubly Linked List via linear interpolation: Delta(Dev) / Delta(Time).\n"
+                           "• A positive drift (+0.05 mm/s) indicates progressive mechanical wear or photodetector degradation.\n"
+                           "• A negative drift (-0.50 mm/s) indicates sudden rotor wobble or structural shock.\n"
+                           "• When recalibration is performed, deviation resets toward baseline, proving the effectiveness of the calibration cycle.";
+        }
+        // 9. Default Fallback
+        else {
+            std::ostringstream rep;
+            rep << "I parsed your request regarding \"" << rawQuery << "\".\n\n"
+                << "Here are specific questions I can answer directly:\n"
+                << "• \"Which is most faulty?\" (Fault frequency leader via Merge Sort)\n"
+                << "• \"Which is least faulty?\" (Clean equipment with 0 faults)\n"
+                << "• \"Which is highest risk?\" (Max-Heap triage root)\n"
+                << "• \"Which machine is a Single Point of Failure?\" (Graph BFS SPOF)\n"
+                << "• \"Tell me about LAB-UPS-01\" (O(1) Hash Table asset lookup)\n"
+                << "• \"Predict next failure\" (Remaining Useful Life Forecast)\n"
+                << "• \"Dispatch top job\" (Max-Heap dispatch action)";
+            responseText = rep.str();
+        }
+
+        std::ostringstream outJson;
+        outJson << "{\"status\":\"success\",\"reply\":\"" << escapeJson(responseText) << "\",\"isCode\":" << (isCode ? "true" : "false") << "}";
+        res.set_content(outJson.str(), "application/json");
     });
 
     // =========================================================================
