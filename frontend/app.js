@@ -1169,14 +1169,161 @@ Transitive Impact Path:
     // 0. Incomplete / Ambiguous queries (e.g. "which", "which is", "what", "help")
     const shortAmbiguous = ['which', 'which is', 'which are', 'which one', 'what', 'what is', 'what are', 'who', 'who is', 'help'];
     if (shortAmbiguous.includes(cleanQ) || cleanQ.length <= 2) {
-      let reply = `Please specify what you would like to know about the laboratory:\n` +
-        `• "Which is most faulty?" — Equipment with the highest fault frequency\n` +
-        `• "Which is least faulty?" — Cleanest equipment with zero/fewest faults\n` +
-        `• "Which has the highest downtime?" — Downtime leader (via Merge Sort)\n` +
-        `• "Which is highest risk?" — Top urgency task in Max-Heap triage\n` +
-        `• "Which is a Single Point of Failure?" — Graph BFS blast radius analysis\n` +
-        `• "Which supplier is the worst (Lemon)?" — Vendor quality scorecard\n` +
-        `• "Which asset will fail next?" — Predictive RUL failure forecast`;
+      let reply = `I can assist with both live laboratory diagnostics and deep "Under the Hood" Data Structures & Algorithms:\n\n` +
+        `UNDER THE HOOD & DSA ARCHITECTURE:\n` +
+        `• "How does this work under the hood?" — 5-stage real-time pipeline\n` +
+        `• "What data structures are used?" — All 8 custom C++ structures (Zero STL)\n` +
+        `• "How is risk score calculated?" — Exact mathematical formula & blast multiplier\n` +
+        `• "Explain Big-O time complexity" — Algorithmic bounds breakdown\n` +
+        `• "How does Max-Heap / Hash Table / AVL Tree work?" — Data structure internals\n\n` +
+        `LIVE FLEET DIAGNOSTICS:\n` +
+        `• "Which is most faulty?" / "Which is least faulty?"\n` +
+        `• "Which has the highest downtime?" (Merge Sort)\n` +
+        `• "Which is highest risk?" (Max-Heap triage root)\n` +
+        `• "Which machine is a Single Point of Failure?" (Graph BFS)\n` +
+        `• "Which supplier is the worst (Lemon Index)?"\n` +
+        `• "Predict next failure" (Remaining Useful Life Forecast)`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Architecture & Pipeline
+    if (cleanQ.includes('under the hood') || cleanQ.includes('how does it work') || cleanQ.includes('how it works') ||
+        cleanQ.includes('architecture') || cleanQ.includes('pipeline') || cleanQ.includes('internals') || cleanQ.includes('how does this work')) {
+      let reply = `Under the Hood: 5-Stage Real-Time Pipeline Architecture\n\n` +
+        `1. Circular Queue [O(1) Intake]:\n` +
+        `   Bounded ring buffer ingests sensor alerts & engineer tickets without memory spikes or heap reallocations.\n\n` +
+        `2. Hash Table [O(1) Avg Lookup]:\n` +
+        `   Asset code mapped to hardware records using separate chaining collision resolution & dynamic prime rehashing.\n\n` +
+        `3. Doubly Linked List [O(1) History & Drift]:\n` +
+        `   Chronological telemetry chain appends readings; computes physical Drift Velocity: Delta(Dev) / Delta(Time).\n\n` +
+        `4. Directed Graph [BFS O(V + E) Blast Radius]:\n` +
+        `   Traverses downstream power/data dependencies to identify Single Points of Failure (SPOFs) and cascade multipliers.\n\n` +
+        `5. Binary Max-Heap [O(log N) Priority Queue]:\n` +
+        `   Ranks tasks by Effective Risk Score = BaseRisk × BlastMultiplier. Highest-risk emergency stays at root for O(1) peek and O(log N) dispatch.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Data Structures Overview / Zero STL
+    if (cleanQ.includes('data structure') || cleanQ.includes('dsa') || cleanQ.includes('structures') || cleanQ.includes('zero stl') || cleanQ.includes('from scratch')) {
+      let reply = `Custom Data Structures Implemented (100% From Scratch, Zero STL Containers):\n\n` +
+        `1. Circular Queue: Bounded O(1) buffer with FIFO wraparound & batch dequeue.\n` +
+        `2. Hash Table: O(1) average lookup with separate chaining linked lists & dynamic rehashing.\n` +
+        `3. Doubly Linked List: O(1) append & bidirectional traversal for sensor telemetry & drift velocity.\n` +
+        `4. AVL Tree: O(log N) self-balancing BST ordered by calendar due dates with O(log N + K) range queries.\n` +
+        `5. Binary Max-Heap: O(1) root access and O(log N) bubble-up/down for emergency triage.\n` +
+        `6. Directed Graph: Adjacency list representation with Breadth-First Search (BFS) for blast-radius calculation.\n` +
+        `7. Undo Stack: O(1) LIFO transaction rollback for fault reports & technician dispatches.\n` +
+        `8. Merge Sort: Guaranteed O(N log N) divide-and-conquer stable sorting for audits.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Big-O Time & Space Complexity
+    if (cleanQ.includes('complexity') || cleanQ.includes('big o') || cleanQ.includes('big-o') || cleanQ.includes('time complexity')) {
+      let reply = `Theoretical & Practical Complexity Bounds (Big-O Analysis):\n\n` +
+        `• Fault Report Intake: O(1) time, O(Capacity) space (Circular Queue)\n` +
+        `• Asset Record Lookup: O(1) average time, O(N) space (Hash Table)\n` +
+        `• Telemetry History Append: O(1) time (Doubly Linked List tail pointer)\n` +
+        `• Drift Velocity Calculation: O(1) time (Linear interpolation between consecutive nodes)\n` +
+        `• Blast Radius Impact: O(V + E) time (Graph BFS downstream reachability)\n` +
+        `• Priority Queue Insertion: O(log N) time (Max-Heap bubble-up)\n` +
+        `• Top Urgency Dispatch: O(log N) time (Max-Heap extract root & heapify)\n` +
+        `• Calibration Window Range Query: O(log N + K) time (AVL Tree)\n` +
+        `• Audit Compliance Sorting: O(N log N) time, O(N) temp space (Merge Sort)\n` +
+        `• Transaction Undo Rollback: O(1) time, O(History) space (Undo Stack)`;
+      appendChatMessage(reply, 'bot', true);
+      return;
+    }
+
+    // UNDER THE HOOD: Risk Score Formula
+    if (cleanQ.includes('risk score') || cleanQ.includes('risk formula') || cleanQ.includes('calculate risk') || cleanQ.includes('how is risk') || cleanQ.includes('how is priority') || cleanQ.includes('priority formula') || cleanQ.includes('how is it calculated')) {
+      let reply = `Emergency Prioritization Risk Formula:\n\n` +
+        `Base Risk = (Severity × 5.0) + (DaysOverdue × 1.5) + (|DriftVelocity| × 10.0)\n\n` +
+        `Blast Multiplier = 1.0 + (DownstreamDependents × 0.20)\n\n` +
+        `Effective Risk Score = Base Risk × Blast Multiplier\n\n` +
+        `Why each term matters:\n` +
+        `• Severity (1-5): Reflects immediate hardware breakdown danger.\n` +
+        `• Days Overdue: Penalizes deferred preventive maintenance.\n` +
+        `• Drift Velocity (mm/s): Catches rapidly accelerating wear before sensor tolerance breach.\n` +
+        `• Blast Multiplier: Elevates root infrastructure (e.g. UPS) whose failure halts multiple dependent instruments.`;
+      appendChatMessage(reply, 'bot', true);
+      return;
+    }
+
+    // UNDER THE HOOD: Circular Queue
+    if ((cleanQ.includes('circular') && cleanQ.includes('queue')) || (cleanQ.includes('queue') && !cleanQ.includes('triage') && !cleanQ.includes('priority') && !cleanQ.includes('emergency'))) {
+      let reply = `Circular Queue (Under the Hood):\n\n` +
+        `• Fixed-size contiguous array buffer with front, rear, and count indices.\n` +
+        `• Wraparound Logic: rear = (rear + 1) % capacity. Eliminates costly element shifting.\n` +
+        `• Bounded Memory Invariant: When count == capacity, new fault arrivals are rejected O(1) or flagged to prevent memory exhaustion.\n` +
+        `• Batch Dequeue: Supports O(K) bulk retrieval of K elements in strict FIFO order across circular boundaries.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Hash Table
+    if (cleanQ.includes('hash table') || cleanQ.includes('hash map') || cleanQ.includes('rehashing') || (cleanQ.includes('collision') && !cleanQ.includes('packet'))) {
+      let reply = `Hash Table with Separate Chaining (Under the Hood):\n\n` +
+        `• Key: Asset Code string (e.g. "LAB-PC-017") hashed via polynomial accumulation modulo bucket count.\n` +
+        `• Collision Handling: Linked list chaining per bucket. Avoids clustering seen in linear probing.\n` +
+        `• Dynamic Rehashing: Automatically doubles capacity to the next prime when Load Factor exceeds 0.75.\n` +
+        `• Average Search, Insert, and Deletion: O(1) expected time.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Doubly Linked List
+    if (cleanQ.includes('doubly linked') || (cleanQ.includes('linked') && cleanQ.includes('list'))) {
+      let reply = `Doubly Linked List (Under the Hood):\n\n` +
+        `• Every asset maintains a bi-directional chain of historical fault & calibration events.\n` +
+        `• Structure: Each node stores prev, next, timestamp, deviation (mm), drift velocity, and description.\n` +
+        `• O(1) Append: Fast tail pointer insertion without iterating through historical records.\n` +
+        `• Drift Velocity Formula: (CurrentDev - PrevDev) / (CurrentTime - PrevTime). Negative values detect sudden rotor shock; positive values indicate progressive wear.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: AVL Tree
+    if (cleanQ.includes('avl') || (cleanQ.includes('tree') && !cleanQ.includes('heap')) || cleanQ.includes('rotations')) {
+      let reply = `Self-Balancing AVL Tree (Under the Hood):\n\n` +
+        `• Strict height-balanced BST ordered by calendar Due Date (days from today).\n` +
+        `• Balance Invariant: |Height(Left) - Height(Right)| <= 1 at every node.\n` +
+        `• Rebalancing Rotations: Executes single (LL, RR) or double (LR, RL) rotations in O(1) during insertion/deletion.\n` +
+        `• Range Query: Finds all calibrations within [startDay, endDay] in O(log N + K) time.\n` +
+        `• Search Operations: findMin() [earliest due], findMax() [furthest due], inorderPredecessor(), and inorderSuccessor().`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Binary Max-Heap
+    if (cleanQ.includes('max heap') || cleanQ.includes('max-heap') || cleanQ.includes('heapify') || (cleanQ.includes('binary') && cleanQ.includes('heap'))) {
+      let reply = `Binary Max-Heap Priority Queue (Under the Hood):\n\n` +
+        `• Contiguous dynamic array storing complete binary tree where Parent.Risk >= Child.Risk.\n` +
+        `• Root Position (Index 0): Always guarantees O(1) instant access to the single highest-urgency emergency in the lab.\n` +
+        `• Bubble-Up Insertion: O(log N) compares new task with parent at index (i - 1) / 2.\n` +
+        `• Extract-Max (Dispatch): O(log N) swaps root with last element, pops, and heapifies down comparing children at 2*i + 1 and 2*i + 2.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Undo Stack
+    if ((cleanQ.includes('undo') || cleanQ.includes('stack') || cleanQ.includes('rollback')) && !cleanQ.includes('dispatch')) {
+      let reply = `Undo Stack (Under the Hood):\n\n` +
+        `• LIFO (Last-In-First-Out) transaction stack providing O(1) rollback for technician actions.\n` +
+        `• Transaction Records: Stores action type (Fault Enqueued, Job Dispatched, Batch Dequeued), target asset, and snapshot data.\n` +
+        `• Reversibility: Dispatched jobs can be pushed back into the Max-Heap; erroneous fault tickets can be cleanly purged from telemetry.`;
+      appendChatMessage(reply, 'bot');
+      return;
+    }
+
+    // UNDER THE HOOD: Merge Sort
+    if (cleanQ.includes('merge sort') || (cleanQ.includes('sort') && !cleanQ.includes('fault') && !cleanQ.includes('downtime') && !cleanQ.includes('calib'))) {
+      let reply = `Merge Sort (Under the Hood):\n\n` +
+        `• Divide-and-Conquer algorithm providing guaranteed O(N log N) worst-case sorting (unlike QuickSort's O(N^2) worst case).\n` +
+        `• Stability: Preserves the relative order of equipment with identical downtime or fault counts.\n` +
+        `• Standalone Scratch Implementation: Zero std::sort or STL vectors. Uses recursive array splitting and auxiliary buffer merging.`;
       appendChatMessage(reply, 'bot');
       return;
     }

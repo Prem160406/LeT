@@ -300,15 +300,154 @@ void HttpServer::start() {
         bool isCode = false;
 
         // 0. Handle Incomplete / Ambiguous Queries (e.g. "which", "which is", "what", "help")
-        if (tokens.empty() || (tokens.size() <= 2 && (hasWord("which") || hasWord("what") || hasWord("who") || hasWord("help") || hasWord("show")))) {
-            responseText = "Please specify what you would like to know about the laboratory:\n"
-                           "• \"Which is most faulty?\" — Equipment with the highest logged faults\n"
-                           "• \"Which is least faulty?\" — Cleanest equipment with zero/fewest faults\n"
-                           "• \"Which has the highest downtime?\" — Downtime leader (via Merge Sort)\n"
-                           "• \"Which is highest risk?\" — Top urgency task in Max-Heap triage\n"
-                           "• \"Which is a Single Point of Failure?\" — Graph BFS blast radius analysis\n"
-                           "• \"Which supplier is the worst (Lemon)?\" — Vendor quality scorecard\n"
-                           "• \"Which asset will fail next?\" — Predictive RUL failure forecast";
+        if (tokens.empty() || (tokens.size() <= 2 && (hasWord("which") || hasWord("what") || hasWord("who") || hasWord("help") || hasWord("show")) && !hasWord("hood") && !hasWord("dsa") && !hasWord("downtime") && !hasWord("risk") && !hasWord("fault") && !hasWord("spof") && !hasWord("heap") && !hasWord("tree") && !hasWord("queue"))) {
+            responseText = "I can assist with both live laboratory diagnostics and deep \"Under the Hood\" Data Structures & Algorithms:\n\n"
+                           "UNDER THE HOOD & DSA ARCHITECTURE:\n"
+                           "• \"How does this work under the hood?\" — 5-stage real-time pipeline\n"
+                           "• \"What data structures are used?\" — All 8 custom C++ data structures (Zero STL)\n"
+                           "• \"How is risk score calculated?\" — Mathematical formula & blast multiplier\n"
+                           "• \"Explain Big-O time complexity\" — Algorithmic bounds breakdown\n"
+                           "• \"How does the Max-Heap / Hash Table / AVL Tree work?\" — Data structure internals\n\n"
+                           "LIVE FLEET DIAGNOSTICS:\n"
+                           "• \"Which is most faulty?\" / \"Which is least faulty?\"\n"
+                           "• \"Which has the highest downtime?\" (Merge Sort)\n"
+                           "• \"Which is highest risk?\" (Max-Heap triage root)\n"
+                           "• \"Which machine is a Single Point of Failure?\" (Graph BFS)\n"
+                           "• \"Which supplier is worst (Lemon)?\" (Vendor quality scorecard)\n"
+                           "• \"Predict next failure\" (Remaining Useful Life Forecast)";
+        }
+        // UNDER THE HOOD: Architecture & Pipeline
+        else if (hasSub("under the hood") || hasSub("how does it work") || hasSub("how it works") ||
+                 hasWord("architecture") || hasWord("pipeline") || hasWord("internals") || hasSub("how does this work") ||
+                 hasSub("how this works") || hasSub("explain system") || hasSub("explain engine")) {
+            responseText = "Under the Hood: 5-Stage Real-Time Pipeline Architecture\n\n"
+                           "1. Circular Queue [O(1) Intake]:\n"
+                           "   Bounded ring buffer ingests sensor alerts & engineer tickets without memory spikes or heap reallocations.\n\n"
+                           "2. Hash Table [O(1) Avg Lookup]:\n"
+                           "   Asset code mapped to hardware records using separate chaining collision resolution & dynamic prime rehashing.\n\n"
+                           "3. Doubly Linked List [O(1) History & Drift]:\n"
+                           "   Chronological telemetry chain appends readings; computes physical Drift Velocity: Delta(Dev) / Delta(Time).\n\n"
+                           "4. Directed Graph [BFS O(V + E) Blast Radius]:\n"
+                           "   Traverses downstream power/data dependencies to identify Single Points of Failure (SPOFs) and cascade multipliers.\n\n"
+                           "5. Binary Max-Heap [O(log N) Priority Queue]:\n"
+                           "   Ranks tasks by Effective Risk Score = BaseRisk × BlastMultiplier. Highest-risk emergency stays at root for O(1) peek and O(log N) dispatch.";
+        }
+        // UNDER THE HOOD: Data Structures Overview / Zero STL
+        else if (hasSub("data structure") || hasWord("dsa") || hasSub("data structures") || hasWord("structures") || hasSub("zero stl") || hasSub("from scratch")) {
+            responseText = "Custom Data Structures Implemented (100% From Scratch, Zero STL Containers):\n\n"
+                           "1. Circular Queue: Bounded O(1) buffer with FIFO wraparound & batch dequeue.\n"
+                           "2. Hash Table: O(1) average lookup with separate chaining linked lists & dynamic rehashing.\n"
+                           "3. Doubly Linked List: O(1) append & bidirectional traversal for sensor telemetry & drift velocity.\n"
+                           "4. AVL Tree: O(log N) self-balancing BST ordered by calendar due dates with O(log N + K) range queries.\n"
+                           "5. Binary Max-Heap: O(1) root access and O(log N) bubble-up/down for emergency triage.\n"
+                           "6. Directed Graph: Adjacency list representation with Breadth-First Search (BFS) for blast-radius calculation.\n"
+                           "7. Undo Stack: O(1) LIFO transaction rollback for fault reports & technician dispatches.\n"
+                           "8. Merge Sort: Guaranteed O(N log N) divide-and-conquer stable sorting for audits.";
+        }
+        // UNDER THE HOOD: Big-O Time & Space Complexity
+        else if (hasWord("complexity") || hasSub("big o") || hasSub("big-o") || hasSub("time complexity") || hasSub("space complexity")) {
+            responseText = "Theoretical & Practical Complexity Bounds (Big-O Analysis):\n\n"
+                           "• Fault Report Intake: O(1) time, O(Capacity) space (Circular Queue)\n"
+                           "• Asset Record Lookup: O(1) average time, O(N) space (Hash Table)\n"
+                           "• Telemetry History Append: O(1) time (Doubly Linked List tail pointer)\n"
+                           "• Drift Velocity Calculation: O(1) time (Linear interpolation between consecutive nodes)\n"
+                           "• Blast Radius Impact: O(V + E) time (Graph BFS downstream reachability)\n"
+                           "• Priority Queue Insertion: O(log N) time (Max-Heap bubble-up)\n"
+                           "• Top Urgency Dispatch: O(log N) time (Max-Heap extract root & heapify)\n"
+                           "• Calibration Window Range Query: O(log N + K) time (AVL Tree)\n"
+                           "• Audit Compliance Sorting: O(N log N) time, O(N) temp space (Merge Sort)\n"
+                           "• Transaction Undo Rollback: O(1) time, O(History) space (Undo Stack)";
+            isCode = true;
+        }
+        // UNDER THE HOOD: Risk Score Formula
+        else if (hasSub("risk score") || hasSub("risk formula") || hasSub("calculate risk") || hasSub("how is risk") || hasSub("how is priority") || hasSub("priority formula") || hasSub("how is it calculated")) {
+            responseText = "Emergency Prioritization Risk Formula:\n\n"
+                           "Base Risk = (Severity × 5.0) + (DaysOverdue × 1.5) + (|DriftVelocity| × 10.0)\n\n"
+                           "Blast Multiplier = 1.0 + (DownstreamDependents × 0.20)\n\n"
+                           "Effective Risk Score = Base Risk × Blast Multiplier\n\n"
+                           "Why each term matters:\n"
+                           "• Severity (1-5): Reflects immediate hardware breakdown danger.\n"
+                           "• Days Overdue: Penalizes deferred preventive maintenance.\n"
+                           "• Drift Velocity (mm/s): Catches rapidly accelerating wear before sensor tolerance breach.\n"
+                           "• Blast Multiplier: Elevates root infrastructure (e.g. UPS) whose failure halts multiple dependent instruments.";
+            isCode = true;
+        }
+        // UNDER THE HOOD: Circular Queue
+        else if ((hasWord("circular") && hasWord("queue")) || (hasWord("queue") && !hasWord("triage") && !hasWord("priority") && !hasWord("emergency"))) {
+            responseText = "Circular Queue (Under the Hood):\n\n"
+                           "• Fixed-size contiguous array buffer with front, rear, and count indices.\n"
+                           "• Wraparound Logic: rear = (rear + 1) % capacity. Eliminates costly element shifting.\n"
+                           "• Bounded Memory Invariant: When count == capacity, new fault arrivals are rejected O(1) or flagged to prevent memory exhaustion.\n"
+                           "• Batch Dequeue: Supports O(K) bulk retrieval of K elements in strict FIFO order across circular boundaries.";
+        }
+        // UNDER THE HOOD: Hash Table
+        else if (hasSub("hash table") || hasSub("hash map") || hasWord("rehashing") || (hasWord("collision") && !hasWord("packet")) || hasWord("collisions")) {
+            HashStats stats = engine.getRegistryStats();
+            std::ostringstream rep;
+            rep << "Hash Table with Separate Chaining (Under the Hood):\n\n"
+                << "• Key: Asset Code string (e.g. \"LAB-PC-017\") hashed via polynomial accumulation modulo bucket count.\n"
+                << "• Collision Handling: Linked list chaining per bucket. Avoids clustering seen in linear probing.\n"
+                << "• Dynamic Rehashing: Automatically doubles capacity to the next prime when Load Factor exceeds 0.75.\n"
+                << "• Live Engine Telemetry: " << stats.totalElements << " assets stored across " << stats.bucketCount
+                << " buckets (Load Factor: " << stats.loadFactor << ", Collisions: " << stats.totalCollisions << ", Max Chain: " << stats.maxChainLength << ").";
+            responseText = rep.str();
+        }
+        // UNDER THE HOOD: Doubly Linked List
+        else if (hasSub("doubly linked") || (hasWord("linked") && hasWord("list")) || hasWord("telemetry")) {
+            responseText = "Doubly Linked List (Under the Hood):\n\n"
+                           "• Every asset maintains a bi-directional chain of historical fault & calibration events.\n"
+                           "• Structure: Each node stores prev, next, timestamp, deviation (mm), drift velocity, and description.\n"
+                           "• O(1) Append: Fast tail pointer insertion without iterating through historical records.\n"
+                           "• Drift Velocity Formula: (CurrentDev - PrevDev) / (CurrentTime - PrevTime). Negative values detect sudden rotor shock; positive values indicate progressive wear.";
+        }
+        // UNDER THE HOOD: AVL Tree
+        else if (hasWord("avl") || (hasWord("tree") && !hasWord("heap")) || hasSub("self balancing") || hasSub("rotations")) {
+            responseText = "Self-Balancing AVL Tree (Under the Hood):\n\n"
+                           "• Strict height-balanced BST ordered by calendar Due Date (days from today).\n"
+                           "• Balance Invariant: |Height(Left) - Height(Right)| <= 1 at every node.\n"
+                           "• Rebalancing Rotations: Executes single (LL, RR) or double (LR, RL) rotations in O(1) during insertion/deletion.\n"
+                           "• Range Query: Finds all calibrations within [startDay, endDay] in O(log N + K) time.\n"
+                           "• Search Operations: findMin() [earliest due], findMax() [furthest due], inorderPredecessor(), and inorderSuccessor().";
+        }
+        // UNDER THE HOOD: Binary Max-Heap
+        else if (hasSub("max heap") || hasSub("max-heap") || hasWord("heapify") || (hasWord("binary") && hasWord("heap"))) {
+            responseText = "Binary Max-Heap Priority Queue (Under the Hood):\n\n"
+                           "• Contiguous dynamic array storing complete binary tree where Parent.Risk >= Child.Risk.\n"
+                           "• Root Position (Index 0): Always guarantees O(1) instant access to the single highest-urgency emergency in the lab.\n"
+                           "• Bubble-Up Insertion: O(log N) compares new task with parent at index (i - 1) / 2.\n"
+                           "• Extract-Max (Dispatch): O(log N) swaps root with last element, pops, and heapifies down comparing children at 2*i + 1 and 2*i + 2.";
+        }
+        // UNDER THE HOOD: Graph BFS & Blast Radius
+        else if ((hasWord("graph") || hasWord("bfs") || hasWord("topology")) && !hasWord("spof")) {
+            responseText = "Directed Dependency Graph (Under the Hood):\n\n"
+                           "• Modeled as an Adjacency List: Key -> Array of downstream dependent equipment codes.\n"
+                           "• Edge Direction: LAB-UPS-01 ──> LAB-NET-SW means Switch relies on UPS for power.\n"
+                           "• Breadth-First Search (BFS): Evaluates downstream cascade impact in O(V + E) time using a FIFO traversal queue.\n"
+                           "• SPOF Vulnerability: Nodes with in-degree 0 and large reachable BFS sets are flagged as Single Points of Failure.";
+        }
+        // UNDER THE HOOD: Undo Stack
+        else if ((hasWord("undo") || hasWord("stack") || hasWord("rollback")) && !hasWord("dispatch")) {
+            responseText = "Undo Stack (Under the Hood):\n\n"
+                           "• LIFO (Last-In-First-Out) transaction stack providing O(1) rollback for technician actions.\n"
+                           "• Transaction Records: Stores action type (Fault Enqueued, Job Dispatched, Batch Dequeued), target asset, and snapshot data.\n"
+                           "• Reversibility: Dispatched jobs can be pushed back into the Max-Heap; erroneous fault tickets can be cleanly purged from telemetry.";
+        }
+        // UNDER THE HOOD: Merge Sort
+        else if (hasSub("merge sort") || (hasWord("sort") && !hasWord("fault") && !hasWord("downtime") && !hasWord("calib"))) {
+            responseText = "Merge Sort (Under the Hood):\n\n"
+                           "• Divide-and-Conquer algorithm providing guaranteed O(N log N) worst-case sorting (unlike QuickSort's O(N^2) worst case).\n"
+                           "• Stability: Preserves the relative order of equipment with identical downtime or fault counts.\n"
+                           "• Standalone Scratch Implementation: Zero std::sort or STL vectors. Uses recursive array splitting and auxiliary buffer merging.";
+        }
+        // UNDER THE HOOD: Lemon Index
+        else if (hasSub("lemon index") || hasSub("lemon formula") || hasSub("supplier formula")) {
+            responseText = "Supplier Lemon Index Scorecard Formula:\n\n"
+                           "Score = 100.0 - (15.0 × AvgFaults + 20.0 × |AvgDrift| + 2.0 × AvgDowntimeHours)\n\n"
+                           "Quality Tiers:\n"
+                           "• Tier A (Score >= 80): Certified reliable; recommended for repeat procurement.\n"
+                           "• Tier B (Score 50-79): Acceptable with regular scheduled calibrations.\n"
+                           "• Tier C / LEMON (Score < 50): DEFECTIVE VENDOR. Triggers procurement freeze and warranty claim.";
+            isCode = true;
         }
         // 1. Fault Query (Most vs Least Faulty)
         else if (hasWord("fault") || hasWord("faults") || hasWord("faulty") || hasWord("defect") || hasWord("defects") || hasWord("issues")) {
@@ -532,12 +671,18 @@ void HttpServer::start() {
         else {
             std::ostringstream rep;
             rep << "I parsed your request regarding \"" << rawQuery << "\".\n\n"
-                << "Here are specific questions I can answer directly:\n"
-                << "• \"Which is most faulty?\" (Fault frequency leader via Merge Sort)\n"
-                << "• \"Which is least faulty?\" (Clean equipment with 0 faults)\n"
+                << "Here are questions I can answer directly:\n\n"
+                << "UNDER THE HOOD & DSA ARCHITECTURE:\n"
+                << "• \"How does this work under the hood?\" (5-stage pipeline)\n"
+                << "• \"What data structures are used?\" (All 8 custom C++ structures)\n"
+                << "• \"How is risk score calculated?\" (Mathematical formula & blast multiplier)\n"
+                << "• \"Explain Big-O time complexity\" (Algorithmic bounds table)\n"
+                << "• \"How does Max-Heap / Hash Table / AVL Tree work?\"\n\n"
+                << "LIVE FLEET DIAGNOSTICS:\n"
+                << "• \"Which is most faulty?\" / \"Which is least faulty?\"\n"
                 << "• \"Which is highest risk?\" (Max-Heap triage root)\n"
                 << "• \"Which machine is a Single Point of Failure?\" (Graph BFS SPOF)\n"
-                << "• \"Tell me about LAB-UPS-01\" (O(1) Hash Table asset lookup)\n"
+                << "• \"Which supplier is the worst (Lemon Index)?\"\n"
                 << "• \"Predict next failure\" (Remaining Useful Life Forecast)\n"
                 << "• \"Dispatch top job\" (Max-Heap dispatch action)";
             responseText = rep.str();
