@@ -14,8 +14,7 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-title">Lab Operations, Emergency Fault Triage & Calibration Engine</div>
-        <div class="brand-subtitle">VIT Pune · Department of Information Technology (Group 8) | Custom C++ Engine</div>
+        <div class="brand-title" style="font-weight: bold; font-size: xx-large;">Lab Diagnostics Engine <p style="font-size: large; font-weight: lighter;">- Real-Time Triage & Calibration</p></div>
       </div>
       <div class="header-actions">
         <!-- DSA Architecture Inspector Toggle -->
@@ -56,7 +55,6 @@
           <span class="dsa-tag">Hash Table · O(1)</span>
         </div>
         <div class="metric-num" id="val-asset-count">0</div>
-        <div class="metric-foot">Unique lab assets in registry</div>
       </div>
 
       <div class="metric-card highlight" data-dsa="Custom Binary Max-Heap Array | O(1) Root Urgency | O(log N) Extraction">
@@ -65,7 +63,6 @@
           <span class="dsa-tag">Max-Heap · O(1)</span>
         </div>
         <div class="metric-num" id="val-triage-count">0</div>
-        <div class="metric-foot">Sorted by live Composite Risk Score</div>
       </div>
 
       <div class="metric-card" data-dsa="Directed Graph (Adjacency List) + BFS Traversal | O(V + E)">
@@ -74,7 +71,6 @@
           <span class="dsa-tag">Graph BFS · O(V+E)</span>
         </div>
         <div class="metric-num" id="val-spof-count">0</div>
-        <div class="metric-foot">Single points of failure across lab</div>
       </div>
 
       <div class="metric-card" data-dsa="Self-Balancing AVL Binary Search Tree | O(log N + K) Range Queries">
@@ -83,7 +79,6 @@
           <span class="dsa-tag">AVL Tree · O(log N)</span>
         </div>
         <div class="metric-num" id="val-calib-count">0</div>
-        <div class="metric-foot">Upcoming within 30-day window</div>
       </div>
     </section>
 
@@ -110,21 +105,18 @@
                 <h3>Register Equipment</h3>
                 <span class="dsa-badge">Hash Table + AVL Tree</span>
               </div>
-              <p class="panel-desc">Add an instrument to the laboratory inventory.</p>
             </div>
             <button type="button" id="btn-fill-demo-asset" class="btn btn-sm btn-secondary">Fill Sample</button>
           </div>
           <form id="form-add-asset">
             <div class="form-row">
               <div class="form-group col">
-                <label for="asset-code">Asset Code *</label>
+                <label for="asset-code">Asset Code</label>
                 <input type="text" id="asset-code" placeholder="e.g. LAB-PC-017" required>
-                <div class="field-help">Unique equipment ID (O(1) Hash Table lookup).</div>
               </div>
               <div class="form-group col">
-                <label for="asset-name">Equipment Name *</label>
+                <label for="asset-name">Equipment Name</label>
                 <input type="text" id="asset-name" placeholder="e.g. UV-Vis Spectrophotometer" required>
-                <div class="field-help">Descriptive machine or device name.</div>
               </div>
             </div>
 
@@ -132,12 +124,10 @@
               <div class="form-group col">
                 <label for="asset-supplier">Supplier / Manufacturer</label>
                 <input type="text" id="asset-supplier" placeholder="e.g. ThermoFisher Scientific">
-                <div class="field-help">Used for supplier quality evaluation.</div>
               </div>
               <div class="form-group col">
                 <label for="asset-loc">Lab Location</label>
                 <input type="text" id="asset-loc" placeholder="Room 304, Bio-Optics">
-                <div class="field-help">Chamber, room, or bay.</div>
               </div>
             </div>
 
@@ -145,19 +135,16 @@
               <div class="form-group col">
                 <label for="asset-calib">Calibration Due (Days from Today)</label>
                 <input type="number" id="asset-calib" value="30">
-                <div class="field-help">Days until recalibration (AVL Tree index).</div>
               </div>
               <div class="form-group col">
                 <label for="asset-downtime">Historical Downtime (Hours)</label>
                 <input type="number" step="0.5" id="asset-downtime" value="0.0">
-                <div class="field-help">Lifetime downtime hours.</div>
               </div>
             </div>
 
             <div class="form-group">
               <label for="asset-dependency">Upstream Dependency (Relies On)</label>
               <input type="text" id="asset-dependency" placeholder="e.g. LAB-UPS-01 or LAB-NET-SW (optional)">
-              <div class="field-help">Power or network source this equipment depends on.</div>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Register Equipment</button>
@@ -172,19 +159,17 @@
                 <h3>Submit Fault Report</h3>
                 <span class="dsa-badge">Circular Queue Intake</span>
               </div>
-              <p class="panel-desc">Log a measurement drift or hardware incident.</p>
             </div>
             <button type="button" id="btn-fill-demo-report" class="btn btn-sm btn-secondary">Fill Sample</button>
           </div>
           <form id="form-submit-report">
             <div class="form-row">
               <div class="form-group col">
-                <label for="report-asset">Target Equipment Code *</label>
+                <label for="report-asset">Target Equipment Code</label>
                 <input type="text" id="report-asset" placeholder="e.g. LAB-CENT-009" required>
-                <div class="field-help">Equipment reporting the failure.</div>
               </div>
               <div class="form-group col">
-                <label for="report-severity">Severity Rating *</label>
+                <label for="report-severity">Severity Rating</label>
                 <select id="report-severity" required>
                   <option value="1">1 - Minor Measurement Noise</option>
                   <option value="2">2 - Moderate Warning Drift</option>
@@ -192,7 +177,6 @@
                   <option value="4">4 - High Urgency Fault</option>
                   <option value="5" selected>5 - Critical Emergency Breakdown</option>
                 </select>
-                <div class="field-help">Scale 1 (minor) to 5 (critical breakdown).</div>
               </div>
             </div>
 
@@ -200,19 +184,17 @@
               <div class="form-group col">
                 <label for="report-overdue">Inspection Overdue (Days)</label>
                 <input type="number" id="report-overdue" value="6">
-                <div class="field-help">Days elapsed past required checkup.</div>
               </div>
               <div class="form-group col">
                 <label for="report-deviation">Current Physical Deviation (mm / offset)</label>
                 <input type="number" step="0.1" id="report-deviation" value="3.5">
-                <div class="field-help">Sensor reading; drift is calculated against previous history node.</div>
+                <div class="field-help">Drift is calculated against the previous reading.</div>
               </div>
             </div>
 
             <div class="form-group">
               <label for="report-desc">Incident Description</label>
               <input type="text" id="report-desc" placeholder="e.g. Rotor vibration during high-speed cycle" required>
-              <div class="field-help">Diagnostic notes logged to Doubly Linked List.</div>
             </div>
 
             <button type="submit" class="btn btn-warning btn-block">Enqueue & Prioritize</button>
@@ -225,13 +207,12 @@
         <div class="panel-head">
           <div>
             <div class="head-with-dsa">
-              <h3>Live Emergency Triage Queue</h3>
+              <h2>Live Emergency Triage Queue</h2>
               <span class="dsa-badge">Max-Heap Priority Queue</span>
             </div>
-            <p class="panel-desc">Jobs prioritized by formula: <code>Risk = (3*Severity + 2*DaysOverdue + 5*|DriftVelocity|) * BlastMultiplier</code></p>
+            <p class="panel-desc"><code></code></p>
           </div>
           <div class="header-actions">
-            <span class="badge badge-risk">Highest Priority Root Always at Top</span>
           </div>
         </div>
 
@@ -274,7 +255,7 @@
                 <h3>Equipment Dependency Topology</h3>
                 <span class="dsa-badge">Directed Graph + BFS</span>
               </div>
-              <p class="panel-desc">Visualizes power and network dependencies. Click any node to compute its downstream blast radius.</p>
+              <p class="panel-desc">Click a node to see its blast radius.</p>
             </div>
             <div class="header-actions">
               <button id="btn-refresh-graph" class="btn btn-sm btn-secondary">Reset Canvas</button>
@@ -294,7 +275,6 @@
           <div class="cards-grid" style="margin-top: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
             <div class="panel-card" data-dsa="Graph BFS Transitive Impact">
               <h4>Blast Radius Simulation Result</h4>
-              <p class="panel-desc">Click any node above to calculate its transitive impact.</p>
               <div id="blast-simulation-result" class="code-box">
                 Select an equipment node on the canvas to evaluate its downstream dependents.
               </div>
@@ -303,14 +283,12 @@
             <!-- Single Points of Failure (SPOF) Vulnerability List -->
             <div class="panel-card" data-dsa="Graph In/Out-Degree Analysis & BFS Reachability">
               <h4>Single Points of Failure (SPOFs)</h4>
-              <p class="panel-desc">Root infrastructure equipment with high downstream impact.</p>
               <div id="spof-summary-list" class="spof-container" style="margin-top: 0.75rem;"></div>
             </div>
 
             <!-- Maintenance Safety Check (What-If Advisor) -->
             <div class="panel-card" data-dsa="Graph BFS + Max-Heap Conflict Check">
               <h4>Maintenance Safety Check</h4>
-              <p class="panel-desc">Check if taking a machine offline will disrupt active experiments.</p>
               <form id="form-safety-check" style="margin-top: 0.75rem;">
                 <div class="form-group">
                   <label for="select-safety-asset">Select Equipment to Service:</label>
@@ -346,7 +324,6 @@
               <h3>Equipment Reports & Quality Audits</h3>
               <span class="dsa-badge">Merge Sort O(N log N)</span>
             </div>
-            <p class="panel-desc">Compliance reports, supplier quality scorecards, predictive failure forecasts, and calibration schedules.</p>
           </div>
           <div class="header-actions">
             <button id="btn-generate-pdf" class="btn btn-sm btn-outline-info">Print Official PDF Audit</button>
@@ -398,7 +375,7 @@
         <!-- Subtab 2: Supplier Quality & Lemon Index -->
         <div id="report-suppliers" class="subtab-content">
           <div class="info-banner">
-            <strong>Supplier Lemon Scorecard:</strong> Grades vendors based on failure rates, drift velocity, and downtime: <code>Score = 100 - (15*AvgFaults + 20*|AvgDrift| + 2*AvgDowntime)</code>. Tier C vendors are flagged for warranty claims.
+            <code>Score = 100 - (15*AvgFaults + 20*|AvgDrift| + 2*AvgDowntime)</code>
           </div>
           <div class="table-wrap">
             <table>
@@ -424,7 +401,7 @@
         <!-- Subtab 3: Predictive Failure Forecast (RUL) -->
         <div id="report-predictive" class="subtab-content">
           <div class="info-banner">
-            <strong>Predictive Remaining Useful Life (RUL):</strong> Forecasts failure before breakdown using linear drift velocity: <code>ETTF = (CriticalThreshold - CurrentDeviation) / |DriftVelocity|</code>.
+            <code>ETTF = (CriticalThreshold - CurrentDeviation) / |DriftVelocity|</code>
           </div>
           <div class="table-wrap">
             <table>
@@ -535,7 +512,6 @@
       <div class="chatbot-header">
         <div>
           <div class="chatbot-title">Lab Operations Assistant</div>
-          <div class="chatbot-subtitle">Local C++ Engine Telemetry & Dispatch</div>
         </div>
         <button id="btn-close-chatbot" class="btn btn-sm btn-ghost" style="padding: 2px 8px;">✕</button>
       </div>
@@ -551,7 +527,7 @@
 
       <div id="chat-messages" class="chat-messages">
         <div class="chat-bubble bot">
-          Hello! I am your Lab Operations Assistant. I monitor real-time sensor drift, audit supplier defect rates, and analyze dependency blast radius from our C++ engine. Ask a question or click a chip above!
+          Ask about faults, suppliers, drift or dispatch.
         </div>
       </div>
 
@@ -683,7 +659,6 @@
       <div class="modal-header">
         <div>
           <h3>C++ Data Structures Specification & Academic Defense Sheet</h3>
-          <p class="panel-desc">VIT Pune Semester 3 IT Department · Group 8 | 100% Scratch Custom C++ Implementation (Zero STL Containers)</p>
         </div>
         <button id="btn-close-dsa-modal" class="btn btn-secondary">Close</button>
       </div>
@@ -713,7 +688,7 @@
             <strong>Binary Max-Heap (Emergency Fault Triage Queue)</strong>
             <span class="badge badge-compliant">peekMax: O(1) | Insert: O(log N) | extractMax: O(log N)</span>
           </div>
-          <p>Array-backed complete binary tree ordering tasks by live Composite Risk Score: <code>Risk = 3*Severity + 2*DaysOverdue + 5*|DriftVelocity|</code> multiplied by the Graph Blast Multiplier. Sift-up percolation on insertion and sift-down on dispatch guarantee strict log-time priority queue invariants without STL.</p>
+          <p>Array-backed complete binary tree ordering tasks by live Composite Risk Score: <code>Risk = 3*Severity + 2(DaysOverdue) + 5(|DriftVelocity|)</code> multiplied by the Graph Blast Multiplier. Sift-up percolation on insertion and sift-down on dispatch guarantee strict log-time priority queue invariants without STL.</p>
         </div>
 
         <div class="dsa-sheet-item">
@@ -765,8 +740,7 @@
   </div>
 
   <footer class="app-footer">
-    <div>VIT Pune | Department of Information Technology | Semester 3 DSA Course Project (Group 8)</div>
-    <div class="footer-meta">Backend: 100% Custom C++ Data Structures (Zero STL Containers) | Transport: WinSock2 HTTP | Light Mode</div>
+    <div>VIT Pune · Department of Information Technology · Group 8</div>
   </footer>
 
   <script src="app.js"></script>

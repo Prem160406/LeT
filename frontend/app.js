@@ -886,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ctx || !canvas) return;
     setupNodeCoordinates();
 
-    ctx.fillStyle = '#f8fafc';
+    ctx.fillStyle = '#cbd0d4';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const edges = state.graphData.edges || [];
@@ -904,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.beginPath();
       ctx.moveTo(fromNode.x, fromNode.y);
       ctx.lineTo(toNode.x, toNode.y);
-      ctx.strokeStyle = isAffectedEdge ? '#dc2626' : '#cbd5e1';
+      ctx.strokeStyle = isAffectedEdge ? '#d92d20' : '#bfe3f6';
       ctx.lineWidth = isAffectedEdge ? 3 : 1.5;
       if (isAffectedEdge) {
         ctx.setLineDash([6, 4]);
@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#dc2626' : '#64748b');
+      drawArrowHead(fromNode.x, fromNode.y, toNode.x, toNode.y, toNode.radius, isAffectedEdge ? '#d92d20' : '#0c2740');
     });
 
     // 2. Draw nodes
@@ -925,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isFailed || isAffected) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius + 8 + Math.sin(animProgress) * 4, 0, 2 * Math.PI);
-        ctx.fillStyle = isFailed ? 'rgba(220, 38, 38, 0.18)' : 'rgba(217, 119, 6, 0.18)';
+        ctx.fillStyle = isFailed ? 'rgba(217, 45, 32, 0.18)' : 'rgba(255, 141, 61, 0.18)';
         ctx.fill();
       }
 
@@ -933,13 +933,13 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
 
       if (isFailed) {
-        ctx.fillStyle = '#dc2626';
+        ctx.fillStyle = '#d92d20';
       } else if (isAffected) {
-        ctx.fillStyle = '#d97706';
+        ctx.fillStyle = '#ff8d3d';
       } else if (isSource) {
-        ctx.fillStyle = '#7c3aed';
+        ctx.fillStyle = '#0c2740';
       } else {
-        ctx.fillStyle = '#2563eb';
+        ctx.fillStyle = '#38bdf8';
       }
       ctx.fill();
 
@@ -947,14 +947,14 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#0c2740';
+      ctx.font = '600 11px "Larsseit", "Plus Jakarta Sans", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(node.id, node.x, node.y);
 
-      ctx.fillStyle = '#0f172a';
-      ctx.font = '600 10px sans-serif';
+      ctx.fillStyle = '#0c2740';
+      ctx.font = '600 11px "Larsseit", "Plus Jakarta Sans", sans-serif';
       ctx.fillText(truncate(node.name, 18), node.x, node.y + node.radius + 13);
     });
   }
