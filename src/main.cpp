@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <string>
 #include <cassert>
+#include <cstdlib>
 
 // Forward declaration
 void populateSampleData(Engine& engine);
@@ -1063,6 +1064,9 @@ int main(int argc, char* argv[]) {
     bool runTests = true;
     bool runServer = false;
     int port = 8080;
+    if(const char* envPort = std::getenv("PORT")){
+        port = std::stoi(envPort);
+    }
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];

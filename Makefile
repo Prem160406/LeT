@@ -4,12 +4,12 @@
 
 CXX = g++
 CXXFLAGS = -std=c++14 -Wall -Wextra -O2 -Iinclude
-LDFLAGS = -lws2_32
+LDFLAGS = 
 
 SRC_DIR = src
 INC_DIR = include
 OBJ_DIR = obj
-TARGET = lab_engine.exe
+TARGET = lab_engine
 
 SRCS = $(SRC_DIR)/Asset.cpp \
        $(SRC_DIR)/CircularQueue.cpp \
@@ -35,7 +35,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR):
-	mkdir $(OBJ_DIR)
+	mkdir -p $(OBJ_DIR)
 
 test: $(TARGET)
 	./$(TARGET) --test
@@ -44,7 +44,7 @@ server: $(TARGET)
 	./$(TARGET) --server 8080
 
 clean:
-	-rmdir /s /q $(OBJ_DIR) 2>nul
-	-del /f /q $(TARGET) 2>nul
+	rm -rf $(OBJ_DIR)
+	rm -f $(TARGET)
 
 .PHONY: all test server clean
