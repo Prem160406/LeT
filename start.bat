@@ -11,7 +11,7 @@ echo   Academic DSA Project - VIT Pune (Semester 3, Group 8)
 echo ====================================================================
 
 :: Check if executable exists; build it if missing
-if not exist "lab_engine.exe" (
+if not exist "%~dp0lab_engine.exe" (
     echo [INFO] lab_engine.exe not found. Building project with mingw32-make...
     mingw32-make
     if errorlevel 1 (
@@ -27,7 +27,7 @@ if "%ERRORLEVEL%"=="0" (
     echo [INFO] Lab Engine server is already active!
 ) else (
     echo [INFO] Starting Lab Engine server on http://localhost:8080 ...
-    start "Lab Engine Server (Port 8080)" lab_engine.exe --server 8080
+    start "Lab Engine Server (Port 8080)" "%~dp0lab_engine.exe" --server 8080
     ping 127.0.0.1 -n 3 >nul
 )
 

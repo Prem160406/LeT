@@ -4,12 +4,22 @@
 
 CXX = g++
 CXXFLAGS = -std=c++14 -Wall -Wextra -O2 -Iinclude
-LDFLAGS = 
+
+ifeq ($(OS),Windows_NT)
+    TARGET = lab_engine.exe
+    LDFLAGS = -lws2_32
+    MKDIR_P = if not exist $(OBJ_DIR) mkdir $(OBJ_DIR)
+    RM_RF = -rmdir /s /q $(OBJ_DIR) 2>nul & -del /f /q $(TARGET) 2>nul
+else
+    TARGET = lab_engine
+    LDFLAGS = 
+    MKDIR_P = mkdir -p $(OBJ_DIR)
+    RM_RF = rm -rf $(OBJ_DIR) $(TARGET)
+endif
 
 SRC_DIR = src
 INC_DIR = include
 OBJ_DIR = obj
-TARGET = lab_engine
 
 SRCS = $(SRC_DIR)/Asset.cpp \
        $(SRC_DIR)/CircularQueue.cpp \
@@ -35,7 +45,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+	$(MKDIR_P)
 
 test: $(TARGET)
 	./$(TARGET) --test
@@ -44,7 +54,6 @@ server: $(TARGET)
 	./$(TARGET) --server 8080
 
 clean:
-	rm -rf $(OBJ_DIR)
-	rm -f $(TARGET)
+	$(RM_RF)
 
 .PHONY: all test server clean
